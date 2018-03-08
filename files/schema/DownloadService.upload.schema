@@ -1,0 +1,49 @@
+{
+    "id"    : "DownloadService.upload",
+    "type"  : "object",
+    "properties" : {
+        "url" : {
+            "type"     : "string",
+            "description" : "The URL to which to post the file"
+        },
+        "fileName" : {
+            "type"     : "string",
+            "description" : "Path to the local file to be uploaded"
+        },
+        "contentType" : {
+            "type" : "string",
+            "description" : "The MIME type of the file"
+        },
+        "fileLabel" : {
+            "type" : "string",
+            "description" : "The label portion of the file name (as opposed to the file extension)"
+        },
+        "postParameters" : {
+            "type" : "array",
+            "properties" : {
+                "key" : {
+                    "type" : "string",
+                    "description" : "key"
+                },
+                "data" : {
+                    "type" : "string",
+                    "description" : "data"
+                },
+                "contentType" : {
+                    "type" : "string",
+                    "default" : "text/plain",
+                    "description" : "contentType"
+                }
+            }
+        },
+        "cookies" : {
+            "type" : "array",
+            "description" : "cookies"
+        },
+        "customHttpHeaders" : {
+            "type" : "array",
+            "description" : "customHttpHeaders"
+        }
+    },
+    "required" : [ "url", "fileName" ]
+}

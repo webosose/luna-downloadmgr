@@ -1,0 +1,15 @@
+{
+    "id"    : "DownloadService.downloadStatusQuery",
+    "type"  : "object",
+    "properties" : {
+        "ticket" : {
+            "type"     : "number",
+            "description" : "ticket of the file to be queried."
+        },
+        "subscribe" : {
+            "type"     : "boolean",
+            "description" : "Subscribe this call and subscribers can receive install progress."
+        }
+    },
+    "required" : [ "ticket" ]
+}

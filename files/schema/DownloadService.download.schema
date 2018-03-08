@@ -1,0 +1,71 @@
+{
+    "id"    : "DownloadService.download",
+    "type"  : "object",
+    "properties" : {
+        "target" : {
+            "type"     : "string",
+            "description" : "ID of application to be installed."
+        },
+        "mime" : {
+            "type"     : "string",
+            "description" : "mime type string, not used in curl now, instead application/x-binary is set."
+        },
+        "authToken" : {
+            "type" : "string",
+            "description" : "used for curl in Auth-Token"
+        },
+        "cookieToken" : {
+            "type" : "string",
+            "description" : "cookieToken"
+        },
+        "cookieHeader" : {
+            "type" : "string",
+            "description" : "cookieHeader"
+        },
+        "deviceId" : {
+            "type" : "string",
+            "description" : "used for curl in Device-Id"
+        },
+        "targetDir" : {
+            "type" : "string",
+            "description" : "target directory where the download file is placed."
+        },
+        "targetFilename" : {
+            "type" : "string",
+            "description" : "target file name that the download file will have. If it's omitted, it will have unique name. If there is the same file name, downloadmgr internally generate unique name."
+        },
+        "keepFilenameOnRedirect" : {
+            "type" : "boolean",
+            "description" : "If True, it will follow redirects until it download the actual file."
+        },
+        "canHandlePause" : {
+            "type" : "boolean",
+            "description" : "True if it can be paused."
+        },
+        "autoResume" : {
+            "type" : "boolean",
+            "description" : "If autoTesume is false, paused task will not be recovered automatically."
+        },
+        "appendTargetFile" : {
+            "type" : "boolean",
+            "description" : "If true and if target file already exist, append download data not create new one."
+        },
+        "e_rangeLow" : {
+            "type" : "string",
+            "description" : "the offset in number of bytes that you want the transfer to start from. used for curl option."
+        },
+        "e_rangeHigh" : {
+            "type" : "string",
+            "description" : "not used now, but must be bigger than e_rangeLow."
+        },
+        "interface" : {
+            "type" : "string",
+            "description" : "one of the following state - (wifi, wan, btpan), it internally set to ANY if it is not one of them. If it is any it will determin a good interface as follows in order."
+        },
+        "subscribe" : {
+            "type" : "boolean",
+            "description" : "Subscribe this call and subscribers can receive install progress."
+        }
+    },
+    "required" : [ "target" ]
+}

@@ -1,0 +1,11 @@
+{
+    "id"    : "DownloadService.getAllHistory",
+    "type"  : "object",
+    "properties" : {
+        "owner" : {
+            "type"     : "string",
+            "description" : "App ID which requested the download"
+        }
+    },
+    "required" : [ "owner" ]
+}

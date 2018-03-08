@@ -1,0 +1,23 @@
+{
+    "id"    : "DownloadService.resumeDownload",
+    "type"  : "object",
+    "properties" : {
+        "ticket" : {
+            "type"     : "number",
+            "description" : "Download ID from download"
+        },
+        "authToken" : {
+            "type"     : "string",
+            "description" : "used for curl in Auth-Token"
+        },
+        "deviceId" : {
+            "type" : "string",
+            "description" : "used for curl in Device-Id"
+        },
+        "subscribe" : {
+            "type" : "boolean",
+            "description" : "Subscribe this call and subscribers can receive install progress."
+        }
+    },
+    "required" : [ "ticket" ]
+}

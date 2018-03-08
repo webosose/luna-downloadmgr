@@ -1,0 +1,11 @@
+{
+    "id"    : "DownloadService.pauseDownload",
+    "type"  : "object",
+    "properties" : {
+        "ticket" : {
+            "type"     : "number",
+            "description" : "Download ID from download"
+        }
+    },
+    "required" : [ "ticket" ]
+}

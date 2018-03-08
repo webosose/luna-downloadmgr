@@ -1,0 +1,11 @@
+{
+    "id"    : "DownloadService.deleteDownloadedFile",
+    "type"  : "object",
+    "properties" : {
+        "ticket" : {
+            "type"     : "number",
+            "description" : "ticket of the file to be deleted."
+        }
+    },
+    "required" : [ "ticket" ]
+}

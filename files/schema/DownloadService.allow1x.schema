@@ -1,0 +1,11 @@
+{
+    "id"    : "DownloadService.allow1x",
+    "type"  : "object",
+    "properties" : {
+        "value" : {
+            "type"     : "boolean",
+            "description" : "should allow 1x"
+        }
+    },
+    "required" : [ "value" ]
+}
