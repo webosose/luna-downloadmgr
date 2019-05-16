@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,15 +62,12 @@ UrlRep UrlRep::fromUrl(const char* uri)
         urlRep.resource = URI_TEXT_RANGE_TO_STRING((uriA.pathTail)->text);
 
     if (uriA.query.first) {
-        uriDissectQueryMallocA(&queryList, &queryCount,
-                               uriA.query.first,
-                               uriA.query.afterLast);
+        uriDissectQueryMallocA(&queryList, &queryCount, uriA.query.first, uriA.query.afterLast);
 
         UriQueryListA* tmpQueryList = queryList;
         while (tmpQueryList) {
             if (tmpQueryList->key) {
-                urlRep.query[tmpQueryList->key] = tmpQueryList->value ?
-                                                  tmpQueryList->value : std::string();
+                urlRep.query[tmpQueryList->key] = tmpQueryList->value ? tmpQueryList->value : std::string();
             }
             tmpQueryList = tmpQueryList->next;
         }
@@ -93,5 +90,5 @@ UrlRep UrlRep::fromUrl(const char* uri)
  */
 UrlRep UrlRep::fromUrl(const std::string& uri)
 {
-    return fromUrl( uri.empty() ? NULL : uri.c_str() );
+    return fromUrl(uri.empty() ? NULL : uri.c_str());
 }

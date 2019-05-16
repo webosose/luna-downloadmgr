@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,34 +39,34 @@ bool deleteFile(const char* filePath)
 {
     if (!filePath)
         return false;
-    LOG_DEBUG (" deleteFile - file path - %s",filePath );
+    LOG_DEBUG(" deleteFile - file path - %s", filePath);
     return (unlink(filePath) == 0);
 }
 
-bool filecopy (const std::string& srcFile, const std::string& destFile)
+bool filecopy(const std::string& srcFile, const std::string& destFile)
 {
     std::ifstream s;
     std::ofstream d;
-    s.open (srcFile.c_str(), std::ios::binary);
-    d.open (destFile.c_str(), std::ios::binary);
+    s.open(srcFile.c_str(), std::ios::binary);
+    d.open(destFile.c_str(), std::ios::binary);
     if (!s.is_open() || !d.is_open())
         return false;
-    d << s.rdbuf ();
+    d << s.rdbuf();
     s.close();
     d.close();
     return true;
 }
 
-bool doesExistOnFilesystem(const char * pathAndFile) {
+bool doesExistOnFilesystem(const char * pathAndFile)
+{
 
     if (pathAndFile == NULL)
         return false;
 
     struct stat buf;
-    if (-1 == ::stat(pathAndFile, &buf ) )
+    if (-1 == ::stat(pathAndFile, &buf))
         return false;
     return true;
-
 
 }
 
@@ -76,102 +76,98 @@ int filesizeOnFilesystem(const char * pathAndFile)
         return 0;
 
     struct stat buf;
-    if (-1 == ::stat(pathAndFile, &buf ) )
+    if (-1 == ::stat(pathAndFile, &buf))
         return 0;
     return buf.st_size;
 }
 
-std::string trimWhitespace(const std::string& s,const std::string& drop)
+std::string trimWhitespace(const std::string& s, const std::string& drop)
 {
-    std::string::size_type first = s.find_first_not_of( drop );
-    std::string::size_type last  = s.find_last_not_of( drop );
+    std::string::size_type first = s.find_first_not_of(drop);
+    std::string::size_type last = s.find_last_not_of(drop);
 
-    if( first == std::string::npos || last == std::string::npos ) return std::string( "" );
-    return s.substr( first, last - first + 1 );
+    if (first == std::string::npos || last == std::string::npos)
+        return std::string("");
+    return s.substr(first, last - first + 1);
 }
 
-
-int splitFileAndPath(const std::string& srcPathAndFile,std::string& pathPart,std::string& filePart)
+int splitFileAndPath(const std::string& srcPathAndFile, std::string& pathPart, std::string& filePart)
 {
     std::vector<std::string> parts;
 //  LOG_DEBUG ("splitFileAndPath - input [%s]\n",srcPathAndFile.c_str());
-    int s = splitStringOnKey(parts,srcPathAndFile,std::string("/"));
-    if ((s == 1) && (srcPathAndFile.at(srcPathAndFile.length()-1) == '/')) {
+    int s = splitStringOnKey(parts, srcPathAndFile, std::string("/"));
+    if ((s == 1) && (srcPathAndFile.at(srcPathAndFile.length() - 1) == '/')) {
         //only path part
         pathPart = srcPathAndFile;
         filePart = "";
-    }
-    else if (s == 1) {
+    } else if (s == 1) {
         //only file part
         if (srcPathAndFile.at(0) == '/') {
             pathPart = "/";
-        }
-        else {
+        } else {
             pathPart = "";
         }
         filePart = parts.at(0);
-    }
-    else if (s >= 2) {
-        for (int i=0;i<s-1;i++) {
+    } else if (s >= 2) {
+        for (int i = 0; i < s - 1; i++) {
             if ((parts.at(i)).size() == 0)
                 continue;
-            pathPart += std::string("/")+parts.at(i);
- //         LOG_DEBUG ("splitFileAndPath - path is now [%s]\n",pathPart.c_str());
+            pathPart += std::string("/") + parts.at(i);
+            //         LOG_DEBUG ("splitFileAndPath - path is now [%s]\n",pathPart.c_str());
         }
         pathPart += std::string("/");
-        filePart = parts.at(s-1);
+        filePart = parts.at(s - 1);
     }
 
     return s;
 }
 
-int splitFileAndExtension(const std::string& srcFileAndExt,std::string& filePart,std::string& extensionPart)
+int splitFileAndExtension(const std::string& srcFileAndExt, std::string& filePart, std::string& extensionPart)
 {
     std::vector<std::string> parts;
-    int s = splitStringOnKey(parts,srcFileAndExt,std::string("."));
+    int s = splitStringOnKey(parts, srcFileAndExt, std::string("."));
     if (s == 1) {
         //only file part; no extension
         filePart = parts.at(0);
-    }
-    else if (s >= 2) {
+    } else if (s >= 2) {
         filePart += parts.at(0);
-        for (int i=1;i<s-1;i++)
-            filePart += std::string(".")+parts.at(i);
-        extensionPart = parts.at(s-1);
+        for (int i = 1; i < s - 1; i++)
+            filePart += std::string(".") + parts.at(i);
+        extensionPart = parts.at(s - 1);
     }
     return s;
 }
 
-int splitStringOnKey(std::vector<std::string>& returnSplitSubstrings,const std::string& baseStr,const std::string& delims)
+int splitStringOnKey(std::vector<std::string>& returnSplitSubstrings, const std::string& baseStr, const std::string& delims)
 {
     std::string::size_type start = 0;
     std::string::size_type mark = 0;
     std::string extracted;
 
-    int i=0;
+    int i = 0;
     while (start < baseStr.size()) {
         //find the start of a non-delims
-        start = baseStr.find_first_not_of(delims,mark);
+        start = baseStr.find_first_not_of(delims, mark);
         if (start == std::string::npos)
             break;
         //find the end of the current substring (where the next instance of delim lives, or end of the string)
-        mark = baseStr.find_first_of(delims,start);
+        mark = baseStr.find_first_of(delims, start);
         if (mark == std::string::npos)
             mark = baseStr.size();
 
-        extracted = baseStr.substr(start,mark-start);
+        extracted = baseStr.substr(start, mark - start);
         if (extracted.size() > 0) {
             //valid string...add it
             returnSplitSubstrings.push_back(extracted);
             ++i;
         }
-        start=mark;
+        start = mark;
     }
 
     return i;
 }
 
-bool isNonErrorProcExit(int ecode,int normalCode)
+bool isNonErrorProcExit(int ecode, int normalCode)
 {
 
     if (!WIFEXITED(ecode))
@@ -184,54 +180,53 @@ bool isNonErrorProcExit(int ecode,int normalCode)
 
 //Should follow conventions for virtualHost naming in webkit: WebCore/platform/KURL.cpp
 //CAUTION: modifying this to return strange paths is potentially dangerous. See ApplicationInstaller.cpp "remove" case where this fn is used
-std::string getHtml5DatabaseFolderNameForApp(const std::string& appId,std::string appFolderPath)
+std::string getHtml5DatabaseFolderNameForApp(const std::string& appId, std::string appFolderPath)
 {
     if (appFolderPath.length() == 0)
         return std::string("");
 
-    replace(appFolderPath.begin(),appFolderPath.end(),'/','.');
-    std::string r = std::string("file_")+appFolderPath+std::string("_0");
+    replace(appFolderPath.begin(), appFolderPath.end(), '/', '.');
+    std::string r = std::string("file_") + appFolderPath + std::string("_0");
     return r;
 }
 
-int postSubscriptionUpdate(const std::string& key,const std::string& postMessage,LSHandle * serviceHandle)
+int postSubscriptionUpdate(const std::string& key, const std::string& postMessage, LSHandle * serviceHandle)
 {
     if (serviceHandle == NULL)
         return true;            //nothing to do
 
-    LSSubscriptionIter *iter=NULL;
+    LSSubscriptionIter *iter = NULL;
     LSError lserror;
     LSErrorInit(&lserror);
     bool retVal = false;
     //acquire the subscription and reply.
 
 //  LOG_DEBUG ("DL-UPDATE: %s",postMessage.c_str());
-    int rc=0;
+    int rc = 0;
 
     if (serviceHandle) {
         retVal = LSSubscriptionAcquire(serviceHandle, key.c_str(), &iter, &lserror);
         if (retVal) {
-        while (LSSubscriptionHasNext(iter)) {
-            LSMessage *message = LSSubscriptionNext(iter);
-            if (!LSMessageReply(serviceHandle,message,postMessage.c_str(),&lserror)) {
-            LSErrorPrint(&lserror,stderr);
-            LSErrorFree(&lserror);
-            //mark the return code bitfield to indicate at least one bus failure
-            rc |= ERRMASK_POSTSUBUPDATE;
+            while (LSSubscriptionHasNext(iter)) {
+                LSMessage *message = LSSubscriptionNext(iter);
+                if (!LSMessageReply(serviceHandle, message, postMessage.c_str(), &lserror)) {
+                    LSErrorPrint(&lserror, stderr);
+                    LSErrorFree(&lserror);
+                    //mark the return code bitfield to indicate at least one bus failure
+                    rc |= ERRMASK_POSTSUBUPDATE;
+                }
             }
-        }
 
-        LSSubscriptionRelease(iter);
-        }
-        else {
-        LSErrorFree(&lserror);
+            LSSubscriptionRelease(iter);
+        } else {
+            LSErrorFree(&lserror);
         }
     }
 
     return rc;
 }
 
-bool processSubscription(LSHandle * serviceHandle, LSMessage * message,const std::string& key)
+bool processSubscription(LSHandle * serviceHandle, LSMessage * message, const std::string& key)
 {
 
     if ((serviceHandle == NULL) || (message == NULL))
@@ -241,18 +236,16 @@ bool processSubscription(LSHandle * serviceHandle, LSMessage * message,const std
     LSErrorInit(&lsError);
 
     if (LSMessageIsSubscription(message)) {
-        if (!LSSubscriptionAdd(serviceHandle, key.c_str(),
-                message, &lsError)) {
+        if (!LSSubscriptionAdd(serviceHandle, key.c_str(), message, &lsError)) {
             LSErrorFree(&lsError);
             return false;
-        }
-        else
+        } else
             return true;
     }
     return false;
 }
 
-uint32_t removeSubscriptions(const std::string& key,LSHandle * serviceHandle)
+uint32_t removeSubscriptions(const std::string& key, LSHandle * serviceHandle)
 {
     if (key.size() == 0)
         return false;
@@ -260,12 +253,12 @@ uint32_t removeSubscriptions(const std::string& key,LSHandle * serviceHandle)
     if (serviceHandle == NULL)
         return false;
 
-    LSSubscriptionIter *iter=NULL;
+    LSSubscriptionIter *iter = NULL;
     LSError lserror;
     LSErrorInit(&lserror);
 
     //acquire the subscription
-    uint32_t rc=0;
+    uint32_t rc = 0;
     bool retVal = false;
 
     if (serviceHandle) {
@@ -274,11 +267,10 @@ uint32_t removeSubscriptions(const std::string& key,LSHandle * serviceHandle)
             while (LSSubscriptionHasNext(iter)) {
                 LSSubscriptionNext(iter);   //..or else remove won't work
                 LSSubscriptionRemove(iter);
-                    ++rc;
+                ++rc;
             }
             LSSubscriptionRelease(iter);
-        }
-        else {
+        } else {
             LSErrorFree(&lserror);
         }
     }

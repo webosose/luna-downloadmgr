@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 LG Electronics, Inc.
+// Copyright (c) 2013-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,7 @@
 std::string Utils::read_file(const std::string &path)
 {
     std::ifstream file(path.c_str());
-    if (file.good())
-    {
+    if (file.good()) {
         std::stringstream buffer;
         buffer << file.rdbuf();
         file.close();
@@ -38,14 +37,11 @@ std::string Utils::read_file(const std::string &path)
 
 bool Utils::make_dir(const std::string &path, bool withParent)
 {
-    if (!withParent)
-    {
+    if (!withParent) {
         int result = mkdir(path.c_str(), 0755);
         if (result == 0 || errno == EEXIST)
             return true;
-    }
-    else
-    {
+    } else {
         int result = g_mkdir_with_parents(path.c_str(), 0755);
         if (result == 0)
             return true;
@@ -56,8 +52,7 @@ bool Utils::make_dir(const std::string &path, bool withParent)
 
 static int rmdir_helper(const char *path, const struct stat *pStat, int flag, struct FTW *ftw)
 {
-    switch(flag)
-    {
+    switch (flag) {
     case FTW_D:
     case FTW_DP:
         if (::rmdir(path) == -1)
@@ -81,15 +76,12 @@ bool Utils::remove_dir(const std::string &path)
     if (lstat(path.c_str(), &oStat) == -1)
         return false;
 
-    if (S_ISDIR(oStat.st_mode))
-    {
+    if (S_ISDIR(oStat.st_mode)) {
         int flags = FTW_DEPTH;
-        if (::nftw(path.c_str(), rmdir_helper, 10, flags) == -1)
-        {
+        if (::nftw(path.c_str(), rmdir_helper, 10, flags) == -1) {
             return false;
         }
-    }
-    else
+    } else
         return false;
 
     return true;
@@ -105,7 +97,8 @@ bool Utils::remove_file(const std::string &path)
 gboolean Utils::cbAsync(gpointer data)
 {
     IAsyncCall *p = reinterpret_cast<IAsyncCall*>(data);
-    if (!p) return false;
+    if (!p)
+        return false;
 
     p->Call();
 

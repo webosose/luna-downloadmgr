@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,40 +45,35 @@ do { \
 
 #endif
 
-static bool localSpaceOnFs(const std::string& path,uint64_t& spaceFreeKB,uint64_t& spaceTotalKB,
-                            bool useFake = false,uint64_t fakeFreeSize = 0)
+static bool localSpaceOnFs(const std::string& path, uint64_t& spaceFreeKB, uint64_t& spaceTotalKB, bool useFake = false, uint64_t fakeFreeSize = 0)
 {
     struct statvfs64 fs_stats;
-    memset(&fs_stats,0,sizeof(fs_stats));
+    memset(&fs_stats, 0, sizeof(fs_stats));
 
-    if (::statvfs64(path.c_str(),&fs_stats) != 0)
-    {
+    if (::statvfs64(path.c_str(), &fs_stats) != 0) {
         //failed to execute statvfs...treat this as if there was no free space
-        LOG_DEBUG ("%s: Failed to execute statvfs on %s",__FUNCTION__,path.c_str());
+        LOG_DEBUG("%s: Failed to execute statvfs on %s", __FUNCTION__, path.c_str());
         return false;
     }
 
-    if (useFake)
-    {
+    if (useFake) {
         fs_stats.f_bfree = fakeFreeSize / fs_stats.f_frsize;
-        LOG_DEBUG ("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                __FUNCTION__,fakeFreeSize,fs_stats.f_bfree);
+        LOG_DEBUG("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )", __FUNCTION__, fakeFreeSize, fs_stats.f_bfree);
     }
 
-    spaceFreeKB = ( ((uint64_t)(fs_stats.f_bfree) * (uint64_t)(fs_stats.f_frsize)) >> 10);
-    spaceTotalKB = ( ((uint64_t)(fs_stats.f_blocks) * (uint64_t)(fs_stats.f_frsize)) >> 10);
-    LOG_DEBUG ("%s: [%s] KB free = %llu, KB total = %llu",__FUNCTION__,path.c_str(),spaceFreeKB,spaceTotalKB);
+    spaceFreeKB = (((uint64_t) (fs_stats.f_bfree) * (uint64_t) (fs_stats.f_frsize)) >> 10);
+    spaceTotalKB = (((uint64_t) (fs_stats.f_blocks) * (uint64_t) (fs_stats.f_frsize)) >> 10);
+    LOG_DEBUG("%s: [%s] KB free = %llu, KB total = %llu", __FUNCTION__, path.c_str(), spaceFreeKB, spaceTotalKB);
     return true;
 }
 
-
-unsigned long MemStringToBytes( const char* ptr );
+unsigned long MemStringToBytes(const char* ptr);
 
 static DownloadSettings* s_settings = 0;
 
 DownloadSettings* DownloadSettings::Settings()
 {
-    if( s_settings )
+    if (s_settings)
         return s_settings;
 
     s_settings = new DownloadSettings();
@@ -88,14 +83,15 @@ DownloadSettings* DownloadSettings::Settings()
 }
 
 //static
-bool    DownloadSettings::validateDownloadPath(const std::string& path) {
+bool DownloadSettings::validateDownloadPath(const std::string& path)
+{
 
     //do not allow /../ in the path. This will avoid complicated parsing to check for valid paths
     if (path.find("..") != std::string::npos)
         return false;
 
     //the prefix /var or /media has to be anchored at 0
-    if ((path.find("/var") == 0 ) || (path.find("/media") == 0))
+    if ((path.find("/var") == 0) || (path.find("/media") == 0))
         return true;
 
     return false;
@@ -103,30 +99,29 @@ bool    DownloadSettings::validateDownloadPath(const std::string& path) {
 
 //TODO: Time to start getting rid of "luna" in visible pathnames
 DownloadSettings::DownloadSettings()
-    :
-      downloadPathMedia("/media/internal/downloads")
-      , schemaPath(WEBOS_INSTALL_WEBOS_SYSCONFDIR "/schemas/luna-downloadmgr/")
-      , wiredInterfaceName("eth0")
-      , wifiInterfaceName("wlan0")
-      , wanInterfaceName("ppp0")
-      , btpanInterfaceName("bsl0")
-      , autoResume(false)
-      , resumeAggression(true)
-      , appCompatibilityMode(true)
-      , preemptiveFreeSpaceCheck(true)
-      , dbg_fake1xForWan(false)
-      , dbg_forceNovacomOnAtStartup(false)
-      , localPackageInstallNoSafety(false)
-      , maxDownloadManagerQueueLength(128)
-      , maxDownloadManagerConcurrent(2)
-      , maxDownloadManagerRecvSpeed(64 * 1024)
-      , freespaceLowmarkFullPercent(FREESPACE_LOWMARK_FULL_PCT)
-      , freespaceMedmarkFullPercent(FREESPACE_MEDMARK_FULL_PCT)
-      , freespaceHighmarkFullPercent(FREESPACE_HIGHMARK_FULL_PCT)
-      , freespaceCriticalmarkFullPercent(FREESPACE_CRITICALMARK_FULL_PCT)
-      , freespaceStopmarkRemainingKBytes(0)
-      , dbg_useStatfsFake(false)
-      , dbg_statfsFakeFreeSizeBytes(0)
+    : downloadPathMedia("/media/internal/downloads"),
+      schemaPath(WEBOS_INSTALL_WEBOS_SYSCONFDIR "/schemas/luna-downloadmgr/"),
+      wiredInterfaceName("eth0"),
+      wifiInterfaceName("wlan0"),
+      wanInterfaceName("ppp0"),
+      btpanInterfaceName("bsl0"),
+      autoResume(false),
+      resumeAggression(true),
+      appCompatibilityMode(true),
+      preemptiveFreeSpaceCheck(true),
+      dbg_fake1xForWan(false),
+      dbg_forceNovacomOnAtStartup(false),
+      localPackageInstallNoSafety(false),
+      maxDownloadManagerQueueLength(128),
+      maxDownloadManagerConcurrent(2),
+      maxDownloadManagerRecvSpeed(64 * 1024),
+      freespaceLowmarkFullPercent(FREESPACE_LOWMARK_FULL_PCT),
+      freespaceMedmarkFullPercent(FREESPACE_MEDMARK_FULL_PCT),
+      freespaceHighmarkFullPercent(FREESPACE_HIGHMARK_FULL_PCT),
+      freespaceCriticalmarkFullPercent(FREESPACE_CRITICALMARK_FULL_PCT),
+      freespaceStopmarkRemainingKBytes(0),
+      dbg_useStatfsFake(false),
+      dbg_statfsFakeFreeSizeBytes(0)
 {
 }
 
@@ -196,164 +191,155 @@ DownloadSettings::~DownloadSettings()
     else g_error_free(_error); \
 }
 
-void DownloadSettings::load( )
+void DownloadSettings::load()
 {
     GKeyFile* keyfile;
     GKeyFileFlags flags;
     GError* error = 0;
 
     keyfile = g_key_file_new();
-    if(!keyfile)
+    if (!keyfile)
         return;
-    flags = GKeyFileFlags( G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS);
+    flags = GKeyFileFlags(G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS);
 
-    if( !g_key_file_load_from_file( keyfile, kDownloadSettingsFile, flags, &error ) )
-    {
-        g_key_file_free( keyfile );
-        if (error) g_error_free(error);
-        return ;
+    if (!g_key_file_load_from_file(keyfile, kDownloadSettingsFile, flags, &error)) {
+        g_key_file_free(keyfile);
+        if (error)
+            g_error_free(error);
+        return;
     }
 
     // Fill in with the macros above.
-    KEY_STRING("General","DownloadPathMedia",downloadPathMedia);
+    KEY_STRING("General", "DownloadPathMedia", downloadPathMedia);
     //validate path, reset to default if necessary
     if (!validateDownloadPath(downloadPathMedia)) {
         downloadPathMedia = "/media/internal/downloads";
     }
 
-    KEY_STRING("General","WIREDInterfaceName",wiredInterfaceName);
-    KEY_STRING("General","WANInterfaceName",wanInterfaceName);
-    KEY_STRING("General","WIFIInterfaceName",wifiInterfaceName);
-    KEY_STRING("General","BTPANInterfaceName",btpanInterfaceName);
+    KEY_STRING("General", "WIREDInterfaceName", wiredInterfaceName);
+    KEY_STRING("General", "WANInterfaceName", wanInterfaceName);
+    KEY_STRING("General", "WIFIInterfaceName", wifiInterfaceName);
+    KEY_STRING("General", "BTPANInterfaceName", btpanInterfaceName);
 
-    KEY_BOOLEAN("General","AutoResume",autoResume);
-    KEY_BOOLEAN("General","BeAggressive__Bee_Eee_AGGRESSIVE",resumeAggression);
-    KEY_BOOLEAN("General","AppCompatibilityMode",appCompatibilityMode);
-    KEY_BOOLEAN("General","PreemptiveFsCheck",preemptiveFreeSpaceCheck);
+    KEY_BOOLEAN("General", "AutoResume", autoResume);
+    KEY_BOOLEAN("General", "BeAggressive__Bee_Eee_AGGRESSIVE", resumeAggression);
+    KEY_BOOLEAN("General", "AppCompatibilityMode", appCompatibilityMode);
+    KEY_BOOLEAN("General", "PreemptiveFsCheck", preemptiveFreeSpaceCheck);
 
     KEY_INTEGER("DownloadManager", "MaxQueueLength", maxDownloadManagerQueueLength);
     KEY_INTEGER("DownloadManager", "MaxConcurrent", maxDownloadManagerConcurrent);
     KEY_INTEGER("DownloadManager", "MaxRecvSpeed", maxDownloadManagerRecvSpeed);
 
-    KEY_INTEGER("Filesystem","SpaceFullLowmarkPercent",freespaceLowmarkFullPercent);
-    KEY_INTEGER("Filesystem","SpaceFullMedmarkPercent",freespaceMedmarkFullPercent);
-    KEY_INTEGER("Filesystem","SpaceFullHighmarkPercent",freespaceHighmarkFullPercent);
-    KEY_INTEGER("Filesystem","SpaceFullCriticalmarkPercent",freespaceCriticalmarkFullPercent);
+    KEY_INTEGER("Filesystem", "SpaceFullLowmarkPercent", freespaceLowmarkFullPercent);
+    KEY_INTEGER("Filesystem", "SpaceFullMedmarkPercent", freespaceMedmarkFullPercent);
+    KEY_INTEGER("Filesystem", "SpaceFullHighmarkPercent", freespaceHighmarkFullPercent);
+    KEY_INTEGER("Filesystem", "SpaceFullCriticalmarkPercent", freespaceCriticalmarkFullPercent);
 
-    KEY_UINT64("Filesystem","SpaceRemainStopmarkKB",freespaceStopmarkRemainingKBytes);
+    KEY_UINT64("Filesystem", "SpaceRemainStopmarkKB", freespaceStopmarkRemainingKBytes);
 
-    if ((freespaceLowmarkFullPercent <= 0) || (freespaceLowmarkFullPercent >= 100))
-    {
+    if ((freespaceLowmarkFullPercent <= 0) || (freespaceLowmarkFullPercent >= 100)) {
         freespaceLowmarkFullPercent = FREESPACE_LOWMARK_FULL_PCT;
     }
-    if ((freespaceMedmarkFullPercent <= freespaceLowmarkFullPercent) || (freespaceMedmarkFullPercent >= 100))
-    {
+    if ((freespaceMedmarkFullPercent <= freespaceLowmarkFullPercent) || (freespaceMedmarkFullPercent >= 100)) {
         freespaceMedmarkFullPercent = FREESPACE_MEDMARK_FULL_PCT;
     }
-    if ((freespaceHighmarkFullPercent <= freespaceMedmarkFullPercent) || (freespaceHighmarkFullPercent >= 100))
-    {
+    if ((freespaceHighmarkFullPercent <= freespaceMedmarkFullPercent) || (freespaceHighmarkFullPercent >= 100)) {
         freespaceHighmarkFullPercent = FREESPACE_HIGHMARK_FULL_PCT;
     }
-    if ((freespaceCriticalmarkFullPercent <= freespaceHighmarkFullPercent) || (freespaceCriticalmarkFullPercent >= 100))
-    {
+    if ((freespaceCriticalmarkFullPercent <= freespaceHighmarkFullPercent) || (freespaceCriticalmarkFullPercent >= 100)) {
         freespaceCriticalmarkFullPercent = FREESPACE_CRITICALMARK_FULL_PCT;
     }
 
-    KEY_BOOLEAN("Debug","UseFakeStatfsValues",dbg_useStatfsFake);
-    KEY_UINT64("Debug","FakeStatfsFreeSizeInBytes",dbg_statfsFakeFreeSizeBytes);
+    KEY_BOOLEAN("Debug", "UseFakeStatfsValues", dbg_useStatfsFake);
+    KEY_UINT64("Debug", "FakeStatfsFreeSizeInBytes", dbg_statfsFakeFreeSizeBytes);
 
     uint64_t freeSpaceFs = 0;
     uint64_t totalSpaceFs = 0;
 
-    if (localSpaceOnFs(downloadPathMedia,freeSpaceFs,totalSpaceFs,dbg_useStatfsFake,dbg_statfsFakeFreeSizeBytes))
-    {
+    if (localSpaceOnFs(downloadPathMedia, freeSpaceFs, totalSpaceFs, dbg_useStatfsFake, dbg_statfsFakeFreeSizeBytes)) {
         //make sure the stop mark is sane...it should be: totalSpaceFs - freespaceStopmarkRemainingKBytes > totalSpaceFs * freespaceCriticalmarkFullPercent/100
-        uint64_t remainKBat99Pct = (uint64_t)((double)totalSpaceFs * ((double)freespaceCriticalmarkFullPercent/100.0)); //oh good lord, let me count the ways that this leaves room for overflow =(
-        LOG_DEBUG ("Info: space remaining at 99%% for the current filesys is %llu KB",remainKBat99Pct);
+        uint64_t remainKBat99Pct = (uint64_t) ((double) totalSpaceFs * ((double) freespaceCriticalmarkFullPercent / 100.0)); //oh good lord, let me count the ways that this leaves room for overflow =(
+        LOG_DEBUG("Info: space remaining at 99%% for the current filesys is %llu KB", remainKBat99Pct);
 
-        if (remainKBat99Pct < freespaceStopmarkRemainingKBytes)
-        {
+        if (remainKBat99Pct < freespaceStopmarkRemainingKBytes) {
             freespaceStopmarkRemainingKBytes = remainKBat99Pct;
-            LOG_DEBUG ("(the SpaceRemainStopmarkKB specification was incorrectly set; resetting to the 99%% mark, which is %llu KB)",freespaceStopmarkRemainingKBytes);
+            LOG_DEBUG("(the SpaceRemainStopmarkKB specification was incorrectly set; resetting to the 99%% mark, which is %llu KB)", freespaceStopmarkRemainingKBytes);
         }
     }
 
+    LOG_DEBUG("Info: Using the following filesystem alert limits: Low = %u%% , Med = %u%% , High = %u%% , Critical = %u%% , stop mark @ %llu KB remaining", freespaceLowmarkFullPercent,
+            freespaceMedmarkFullPercent, freespaceHighmarkFullPercent, freespaceCriticalmarkFullPercent, freespaceStopmarkRemainingKBytes);
 
-    LOG_DEBUG ("Info: Using the following filesystem alert limits: Low = %u%% , Med = %u%% , High = %u%% , Critical = %u%% , stop mark @ %llu KB remaining",
-            freespaceLowmarkFullPercent,freespaceMedmarkFullPercent,freespaceHighmarkFullPercent,freespaceCriticalmarkFullPercent,freespaceStopmarkRemainingKBytes);
-
-    KEY_BOOLEAN("Debug","Fake1x",dbg_fake1xForWan);
-    KEY_BOOLEAN("Debug","ForceNovacomOnAtStartup",dbg_forceNovacomOnAtStartup);
-
+    KEY_BOOLEAN("Debug", "Fake1x", dbg_fake1xForWan);
+    KEY_BOOLEAN("Debug", "ForceNovacomOnAtStartup", dbg_forceNovacomOnAtStartup);
 
     //BARLEYWINE HACKATHON
-    KEY_BOOLEAN("Install","InstallLocalNoSafety",localPackageInstallNoSafety);
+    KEY_BOOLEAN("Install", "InstallLocalNoSafety", localPackageInstallNoSafety);
 
-    g_key_file_free( keyfile );
+    g_key_file_free(keyfile);
     keyfile = g_key_file_new();
-    if( !keyfile)
-    {
-        return ;
+    if (!keyfile) {
+        return;
     }
 
-    if( !g_key_file_load_from_file( keyfile, kDownloadSettingsFilePlatform, flags, &error ) )
-    {
-        g_key_file_free( keyfile );
-        if (error) g_error_free(error);
-        return ;
+    if (!g_key_file_load_from_file(keyfile, kDownloadSettingsFilePlatform, flags, &error)) {
+        g_key_file_free(keyfile);
+        if (error)
+            g_error_free(error);
+        return;
     }
 
     // Fill in with the macros above.
-    KEY_STRING("General","DownloadPathMedia",downloadPathMedia);
+    KEY_STRING("General", "DownloadPathMedia", downloadPathMedia);
     //validate path, reset to default if necessary
     if (!validateDownloadPath(downloadPathMedia)) {
         downloadPathMedia = "/media/internal/downloads";
     }
 
-    KEY_STRING("General","WIREDInterfaceName",wiredInterfaceName);
-    KEY_STRING("General","WANInterfaceName",wanInterfaceName);
-    KEY_STRING("General","WIFIInterfaceName",wifiInterfaceName);
-    KEY_STRING("General","BTPANInterfaceName",btpanInterfaceName);
+    KEY_STRING("General", "WIREDInterfaceName", wiredInterfaceName);
+    KEY_STRING("General", "WANInterfaceName", wanInterfaceName);
+    KEY_STRING("General", "WIFIInterfaceName", wifiInterfaceName);
+    KEY_STRING("General", "BTPANInterfaceName", btpanInterfaceName);
 
-    KEY_BOOLEAN("General","AutoResume",autoResume);
-    KEY_BOOLEAN("General","BeAggressive__Bee_Eee_AGGRESSIVE",resumeAggression);
-    KEY_BOOLEAN("General","AppCompatibilityMode",appCompatibilityMode);
+    KEY_BOOLEAN("General", "AutoResume", autoResume);
+    KEY_BOOLEAN("General", "BeAggressive__Bee_Eee_AGGRESSIVE", resumeAggression);
+    KEY_BOOLEAN("General", "AppCompatibilityMode", appCompatibilityMode);
 
     KEY_INTEGER("DownloadManager", "MaxQueueLength", maxDownloadManagerQueueLength);
     KEY_INTEGER("DownloadManager", "MaxConcurrent", maxDownloadManagerConcurrent);
     KEY_INTEGER("DownloadManager", "MaxRecvSpeed", maxDownloadManagerRecvSpeed);
 
-    g_key_file_free( keyfile );
+    g_key_file_free(keyfile);
 
-    g_mkdir_with_parents(downloadPathMedia.c_str(),0755);
+    g_mkdir_with_parents(downloadPathMedia.c_str(), 0755);
 }
 
-
 // Expands "1MB" --> 1048576, "2k" --> 2048, etc.
-unsigned long MemStringToBytes( const char* ptr )
+unsigned long MemStringToBytes(const char* ptr)
 {
     char number[32];
     unsigned long r = 0;
-    const char* s= ptr;
+    const char* s = ptr;
 
-    while( *ptr && !isalnum(*ptr) ) // skip whitespace
+    while (*ptr && !isalnum(*ptr)) // skip whitespace
         ptr++;
-    s=ptr;
+    s = ptr;
 
-    while( isdigit(*ptr) )
+    while (isdigit(*ptr))
         ptr++;
 
-    strncpy( number, s, (size_t)(ptr-s) );
-    number[ptr-s]=0;
+    strncpy(number, s, (size_t) (ptr - s));
+    number[ptr - s] = 0;
 
-    r = (unsigned long)atol(number);
-    switch(*ptr)
-    {
+    r = (unsigned long) atol(number);
+    switch (*ptr) {
     case 'M':
-        r *= 1024 * 1024; break;
+        r *= 1024 * 1024;
+        break;
     case 'k':
     case 'K':
-        r *= 1024 ; break;
+        r *= 1024;
+        break;
     }
 
     return r;

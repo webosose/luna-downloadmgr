@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 LG Electronics, Inc.
+// Copyright (c) 2013-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,19 +23,13 @@
 #include <Singleton.hpp>
 
 //! List of utilites for pbnjson
-class JUtil : public Singleton<JUtil>
-{
+class JUtil: public Singleton<JUtil> {
 public:
     //! Error class used in JUtil
-    class Error
-    {
+    class Error {
     public:
-        typedef enum
-        {
-            None = 0,
-            File_Io,
-            Schema,
-            Parse,
+        typedef enum {
+            None = 0, File_Io, Schema, Parse,
         } ErrorCode;
 
         //! Constructor
@@ -63,24 +57,24 @@ public:
     /*! Parse given json data using schema.
      * If schemaName is empty, use JSchemaFragment("{}")
      */
-    static pbnjson::JValue    parse(const char *rawData, const std::string &schemaName, Error *error = NULL, pbnjson::JResolver *schemaResolver = NULL);
+    static pbnjson::JValue parse(const char *rawData, const std::string &schemaName, Error *error = NULL, pbnjson::JResolver *schemaResolver = NULL);
 
     /*! Parse given json file path using schema.
      * If schemaName is empty, use JSchemaFragment("{}")
      */
-    static pbnjson::JValue    parseFile(const std::string &path, const std::string &schemaName, Error *error = NULL, pbnjson::JResolver *schemaResolver = NULL);
+    static pbnjson::JValue parseFile(const std::string &path, const std::string &schemaName, Error *error = NULL, pbnjson::JResolver *schemaResolver = NULL);
 
     //! Make pbnjson::JValue to std::string
-    static std::string        toSimpleString(pbnjson::JValue json);
+    static std::string toSimpleString(pbnjson::JValue json);
 
     /*! Load schema from file.
      * If schemaName is empty, return JSchemaFragment("{}")
      * If cache set, find cache first and if not exist in cache load schema and store it.
      */
-    pbnjson::JSchema          loadSchema(const std::string &schemaName, bool cache);
+    pbnjson::JSchema loadSchema(const std::string &schemaName, bool cache);
 
 protected:
-    friend class Singleton<JUtil>;
+    friend class Singleton<JUtil> ;
 
     //! Constructor
     JUtil();
@@ -89,6 +83,6 @@ protected:
     ~JUtil();
 
 private:
-    std::map< std::string, pbnjson::JSchema > m_mapSchema;
+    std::map<std::string, pbnjson::JSchema> m_mapSchema;
 };
 #endif

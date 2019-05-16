@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,11 +24,20 @@ class TransferTask {
 
 public:
 
-    enum TransferTaskType { DOWNLOAD_TASK , UPLOAD_TASK };
+    enum TransferTaskType {
+        DOWNLOAD_TASK, UPLOAD_TASK
+    };
 
-    TransferTask(DownloadTask * ptr_downloadTask) : type(DOWNLOAD_TASK) , p_downloadTask(ptr_downloadTask) , p_uploadTask(0) , m_remove(false) {}
-    TransferTask(UploadTask * ptr_uploadTask) : type(UPLOAD_TASK) , p_downloadTask(0) , p_uploadTask(ptr_uploadTask) , m_remove(false) {}
-    virtual ~TransferTask() {
+    TransferTask(DownloadTask * ptr_downloadTask) :
+            type(DOWNLOAD_TASK), p_downloadTask(ptr_downloadTask), p_uploadTask(0), m_remove(false)
+    {
+    }
+    TransferTask(UploadTask * ptr_uploadTask) :
+            type(UPLOAD_TASK), p_downloadTask(0), p_uploadTask(ptr_uploadTask), m_remove(false)
+    {
+    }
+    virtual ~TransferTask()
+    {
         if (p_downloadTask)
             delete p_downloadTask;
         if (p_uploadTask)
@@ -45,7 +54,7 @@ public:
     TransferTaskType type;
     DownloadTask * p_downloadTask;
     UploadTask * p_uploadTask;
-    bool    m_remove;
+    bool m_remove;
 
 };
 

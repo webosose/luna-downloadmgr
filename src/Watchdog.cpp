@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2018 LG Electronics, Inc.
+// Copyright (c) 2015-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,8 +23,7 @@ static inline gboolean is_idle(gpointer ctx)
     unsigned int n_active_tasks = m->howManyTasksActive();
     int n_intr_tasks = m->howManyTasksInterrupted();
 
-    WATCHDOG_LOG_DEBUG("Active tasks: %u; Interrupted tasks: %d;",
-        n_active_tasks, n_intr_tasks);
+    WATCHDOG_LOG_DEBUG("Active tasks: %u; Interrupted tasks: %d;", n_active_tasks, n_intr_tasks);
 
     /* DownloadManager can be shutted down if:
      *
