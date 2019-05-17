@@ -21,10 +21,6 @@
  @}
  */
 //->End of API documentation comment block
-#include "DownloadManager.h"
-#include "DownloadUtils.h"
-#include "DownloadSettings.h"
-
 #include <vector>
 #include <iostream>
 #include <cstring>
@@ -38,11 +34,14 @@
 #include <unistd.h>
 
 #include <boost/regex.hpp>
+#include <core/DownloadManager.h>
 #include <pbnjson.hpp>
-#include "UrlRep.h"
-#include "Logging.h"
-#include "JUtil.h"
-#include "Utils.h"
+#include <setting/DownloadSettings.h>
+#include <util/DownloadUtils.h>
+#include <util/JUtil.h>
+#include <util/Logging.h>
+#include <util/UrlRep.h>
+#include <util/Utils.h>
 
 bool DownloadManager::s_allow1x = false;                //a lunabus fn can set this to true to allow 1x connections
 

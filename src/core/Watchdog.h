@@ -18,8 +18,8 @@
 #define __Watchdog_h__
 
 #include <glib.h>
-#include "DownloadSettings.h"
-#include "Logging.h"
+#include <setting/DownloadSettings.h>
+#include <util/Logging.h>
 
 // Activity check interval in seconds
 #define WATCHDOG_TIMEOUT (60)

@@ -26,15 +26,15 @@
 
  */
 
-#include <glib.h>
-#include <glibcurl.h>
+#include "../external/glibcurl.h"
 
+#include <glib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <assert.h>
 
-#include "Logging.h"
+//#include "Logging.h"
 
 /* #define D(_args) fprintf _args; */
 #define D(_args)
@@ -470,7 +470,7 @@ static void registerUnregisterFds() {
   curl_multi_fdset(curlSrc->multiHandle, &curlSrc->fdRead,
                    &curlSrc->fdWrite, &curlSrc->fdExc, &curlSrc->fdMax);
   if ((curlSrc->fdMax < -1) || (curlSrc->fdMax > GLIBCURL_FDMAX)) {
-      LOG_WARNING_PAIRS_ONLY (LOGID_GCURL_FDMAX_WARNING, 1, PMLOGKFV ("fdMax", "%d", curlSrc->fdMax));
+      // LOG_WARNING_PAIRS_ONLY (LOGID_GCURL_FDMAX_WARNING, 1, PMLOGKFV ("fdMax", "%d", curlSrc->fdMax));
   }
   /*fprintf(stderr, "registerUnregisterFds: fdMax=%d\n", curlSrc->fdMax);*/
   assert(curlSrc->fdMax >= -1 && curlSrc->fdMax <= GLIBCURL_FDMAX);

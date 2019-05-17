@@ -14,19 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "DownloadSettings.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <glib.h>
+#include <setting/DownloadSettings.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/statvfs.h>
+#include <util/DownloadUtils.h>
+#include <util/Logging.h>
 
-#include "DownloadUtils.h"
-#include "Logging.h"
 
 static const char* kDownloadSettingsFile = "/etc/palm/downloadManager.conf";
 static const char* kDownloadSettingsFilePlatform = "/etc/palm/downloadManager-platform.conf";

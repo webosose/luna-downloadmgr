@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include <core/DownloadHistoryDb.h>
 #include <list>
 #include <string>
 #include <map>
@@ -22,9 +23,8 @@
 #include <cstring>
 #include <strings.h>
 #include <unistd.h>
+#include <util/Logging.h>
 
-#include "DownloadHistoryDb.h"
-#include "Logging.h"
 
 #define VALID_SCHEMA_VER    "system-2"
 ///////////////////// DOWNLOAD HISTORY DB //////////////////////////////////////////////

@@ -14,13 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef UPLOADTASK_H_
-#define UPLOADTASK_H_
+#ifndef BASE_UPLOADTASK_H_
+#define BASE_UPLOADTASK_H_
 
 #include <vector>
 #include <string>
 #include <stdint.h>
-#include "glibcurl.h"
+
+#include "../external/glibcurl.h"
 
 typedef std::pair<std::string, std::string> kvpair;
 
@@ -143,14 +144,16 @@ private:
 
     UploadTask()
     {
-    };
+    }
 
     //propagate into the object and store, postparts and contenttype, as they may be useful in case of redirects, or other transient problems
     UploadTask(const std::string& url, const std::string file, const std::string& data, uint32_t id, std::vector<PostItem> * postparts, const std::string& contenttype, CURL * p_curl);
+
     UploadTask& operator=(const UploadTask& c)
     {
         return *this;
     }
+
     UploadTask(const UploadTask& c)
     {
     }
@@ -158,8 +161,6 @@ private:
     static uint32_t genNewId();
 
     void setHTTPHeaders(std::vector<std::string>& headerList);
-
-/// -------------------- vars ------------------------------------------------------------------------------------------
 
     std::string m_url;
     std::string m_sourceFile;
@@ -180,4 +181,4 @@ private:
     std::string m_replyLocationHeader;
 };
 
-#endif /*UPLOADTASK_H_*/
+#endif /*BASE_UPLOADTASK_H_*/

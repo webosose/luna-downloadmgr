@@ -22,7 +22,7 @@
 #include <set>
 #include <glib.h>
 #include <stdint.h>
-#include "Singleton.hpp"
+#include <util/Singleton.hpp>
 #include "webospaths.h"
 
 // low mark is hard-defaulted to 80%

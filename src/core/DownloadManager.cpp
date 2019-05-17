@@ -14,10 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "DownloadManager.h"
-#include "DownloadSettings.h"
-#include "DownloadUtils.h"
-
+#include <core/DownloadManager.h>
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -33,10 +30,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pbnjson.hpp>
-#include "UrlRep.h"
-#include "Logging.h"
-#include "Time.h"
-#include "JUtil.h"
+#include <setting/DownloadSettings.h>
+#include <util/DownloadUtils.h>
+#include <util/JUtil.h>
+#include <util/Logging.h>
+#include <util/Time.h>
+#include <util/UrlRep.h>
 
 #define TIMEOUT_INTERVAL_SEC 10
 
