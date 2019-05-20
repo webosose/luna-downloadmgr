@@ -1,4 +1,4 @@
-# Copyright (c) 2012-2018 LG Electronics, Inc.
+# Copyright (c) 2012-2019 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 2.8.7)
-project(LunaDownloadMgr CXX)
 
 include(webOS/webOS)
 
@@ -60,77 +59,47 @@ find_package(Boost REQUIRED COMPONENTS regex)
 include_directories(${Boost_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${Boost_CFLAGS_OTHER})
 
+# Environment
+set(BIN_NAME LunaDownloadMgr)
+file(GLOB_RECURSE SRC_INTERNAL ${PROJECT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE SRC_EXTERNAL ${PROJECT_SOURCE_DIR}/external/*.c)
+
 include_directories(src)
-
-webos_add_compiler_flags(ALL -Wall -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
-
-webos_include_install_paths()
-
+include_directories(external)
 include_directories(${WEBOS_BINARY_CONFIGURED_DIR})
 
-set(SOURCES
-    src/DownloadHistoryDb.cpp
-    src/DownloadManager.cpp
-    src/DownloadService.cpp
-    src/DownloadSettings.cpp
-    src/DownloadTask.cpp
-    src/DownloadUtils.cpp
-    src/Logging.cpp
-    src/Main.cpp
-    src/UploadTask.cpp
-    src/UrlRep.cpp
-    src/JUtil.cpp
-    src/Utils.cpp
-    src/Watchdog.cpp
-    src/Singleton.cpp
-    src/glibcurl.c)
+webos_include_install_paths()
+webos_add_compiler_flags(ALL CXX -std=c++0x)
+webos_add_compiler_flags(ALL -Wall -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64)
+add_executable(${BIN_NAME} ${SRC_EXTERNAL} ${SRC_INTERNAL})
 
-# force cmake to build glibcurl.c also (as c++ source)
-set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
+# Link
+set(LIBS
+    ${GLIB2_LDFLAGS}
+    ${GTHREAD2_LDFLAGS}
+    ${LUNA_PREFS_LDFLAGS}
+    ${LS2_LDFLAGS}
+    ${PMLOGLIB_LDFLAGS}
+    ${CURL_LDFLAGS}
+    ${PBNJSON_CPP_LDFLAGS}
+    ${SQLITE3_LDFLAGS}
+    ${Boost_LIBRARIES}
+    pthread
+    uriparser
+)
+target_link_libraries(${BIN_NAME} ${LIBS})
 
-add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-
-target_link_libraries(${CMAKE_PROJECT_NAME}
-                      ${GLIB2_LDFLAGS}
-                      ${GTHREAD2_LDFLAGS}
-                      ${LUNA_PREFS_LDFLAGS}
-                      ${LS2_LDFLAGS}
-                      ${PMLOGLIB_LDFLAGS}
-                      ${CURL_LDFLAGS}
-                      ${PBNJSON_CPP_LDFLAGS}
-                      ${SQLITE3_LDFLAGS}
-                      ${Boost_LIBRARIES}
-                      pthread
-                      uriparser)
-
-# TODO: LunaDownloadMgr is daemon so fix to use webos_build_daemon
-# macro, when handled following (backward compatibility) issues:
-# - installed to /usr/bin (webos_build_daemon install to [/usr]/sbin)
-# - permissions 750 (not possible to pass permissions to
-#                    webos_build_daemon, RESTRICTED_PERMISSIONS give
-#                    WORLD_READ WORLD_EXECUTE extra bits)
-install(TARGETS ${CMAKE_PROJECT_NAME}
-        DESTINATION ${WEBOS_INSTALL_BINDIR}
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                    GROUP_READ GROUP_EXECUTE)
+# Install
+install(TARGETS ${BIN_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
 webos_distro_variant_dep()
 
-if(WEBOS_TARGET_DISTRO_VARIANT STREQUAL "lite")
-    set (${CMAKE_PROJECT_NAME}_SERVICE_TYPE "dynamic")
-else()
-    set (${CMAKE_PROJECT_NAME}_SERVICE_TYPE "static")
-    set (${CMAKE_PROJECT_NAME}_ADD_START_COMMAND "start on rest-boot-done")
-    set (${CMAKE_PROJECT_NAME}_ADD_RESPAWN_OPTION "respawn")
-endif()
+set (${CMAKE_PROJECT_NAME}_SERVICE_TYPE "static")
+set (${CMAKE_PROJECT_NAME}_ADD_START_COMMAND "start on rest-boot-done")
+set (${CMAKE_PROJECT_NAME}_ADD_RESPAWN_OPTION "respawn")
 
 # install luna-service configurations
 webos_build_system_bus_files()
-
-# install upstart configurations: when switch is made to webos_build_daemon()
-# these two lines can be deleted
-webos_build_configured_file(files/launch/LunaDownloadMgr SYSCONFDIR event.d)
-webos_build_configured_file(files/launch/LunaDownloadMgr.conf SYSCONFDIR init)
 
 file(GLOB_RECURSE SCHEMAS files/schema/*.schema)
 install(FILES ${SCHEMAS} DESTINATION ${WEBOS_INSTALL_WEBOS_SYSCONFDIR}/schemas/luna-downloadmgr)
