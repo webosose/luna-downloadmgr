@@ -34,7 +34,6 @@
 #include <util/DownloadUtils.h>
 #include <util/JUtil.h>
 #include <util/Logging.h>
-#include <util/Time.h>
 #include <util/UrlRep.h>
 
 #define TIMEOUT_INTERVAL_SEC 10
@@ -94,10 +93,10 @@ DownloadManager::DownloadManager()
       m_wifiConnectionStatus(InetConnectionUnknownState),
       m_btpanConnectionStatus(InetConnectionUnknownState),
       m_wiredConnectionStatus(InetConnectionUnknownState),
-      m_wanInterfaceName(DownloadSettings::Settings()->wanInterfaceName),
-      m_wifiInterfaceName(DownloadSettings::Settings()->wifiInterfaceName),
-      m_btpanInterfaceName(DownloadSettings::Settings()->btpanInterfaceName),
-      m_wiredInterfaceName(DownloadSettings::Settings()->wiredInterfaceName),
+      m_wanInterfaceName(DownloadSettings::Settings()->m_wanInterfaceName),
+      m_wifiInterfaceName(DownloadSettings::Settings()->m_wifiInterfaceName),
+      m_btpanInterfaceName(DownloadSettings::Settings()->m_btpanInterfaceName),
+      m_wiredInterfaceName(DownloadSettings::Settings()->m_wiredInterfaceName),
       m_serviceHandle(NULL),
       m_storageDaemonToken(0),
       m_activeTaskCount(0),
@@ -125,11 +124,11 @@ bool DownloadManager::init()
 {
 
 #if !defined(TARGET_DESKTOP)
-    if (DownloadSettings::Settings()->downloadPathMedia.size()) {
-        m_downloadPath = DownloadSettings::Settings()->downloadPathMedia;
+    if (DownloadSettings::Settings()->m_downloadPathMedia.size()) {
+        m_downloadPath = DownloadSettings::Settings()->m_downloadPathMedia;
     } else {
         m_downloadPath = "/media/internal/downloads/";
-        DownloadSettings::Settings()->downloadPathMedia = "/media/internal/downloads/";
+        DownloadSettings::Settings()->m_downloadPathMedia = "/media/internal/downloads/";
     }
     m_userDiskRootPath = "/media/internal/";
 #else
@@ -256,7 +255,7 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
                         PMLOGKS("deviceId", deviceId.empty() ? "Not-Available" : deviceId.c_str()));
 
     // if the queue is already full, no point in continuing
-    if (m_queue.size() >= DownloadSettings::Settings()->maxDownloadManagerQueueLength) {
+    if (m_queue.size() >= DownloadSettings::Settings()->m_maxDownloadManagerQueueLength) {
         return DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL;
     }
 
@@ -292,11 +291,11 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
     UrlRep parsedUrl = UrlRep::fromUrl(uri.c_str());
 
     //Check the source uri for security. It should be http, https or ftp scheme
-    if (parsedUrl.scheme != "http" && parsedUrl.scheme != "https" && parsedUrl.scheme != "ftp") {
+    if (parsedUrl.m_scheme != "http" && parsedUrl.m_scheme != "https" && parsedUrl.m_scheme != "ftp") {
         //failed security check
         LOG_WARNING_PAIRS(LOGID_SECURITY_CHECK_FAIL, 2,
                           PMLOGKS("uri", uri.c_str()),
-                          PMLOGKS("scheme", parsedUrl.scheme.c_str()),
+                          PMLOGKS("scheme", parsedUrl.m_scheme.c_str()),
                           "this scheme is not allowed");
         return DOWNLOADMANAGER_STARTSTATUS_FAILEDSECURITYCHECK;
     }
@@ -308,42 +307,42 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
         startupGlibCurl();
 
     task->setRemainingRedCounts(remainingRedCounts);
-    task->ticket = ticket;
-    task->opt_keepOriginalFilenameOnRedirect = keepOriginalFilenameOnRedirect;
-    task->ownerId = caller;
+    task->m_ticket = ticket;
+    task->m_opt_keepOriginalFilenameOnRedirect = keepOriginalFilenameOnRedirect;
+    task->m_ownerId = caller;
 
     //LOG_DEBUG ("Override Target Dir : specified as [%s]",overrideTargetDir.c_str());
     if (!overrideTargetDir.empty() && overrideTargetDir != std::string("") && isValidOverridePath(overrideTargetDir)) {
         //side-effect: ovrDir will be created if necessary, and if the path was considered to be Ok
-        task->destPath = overrideTargetDir;
+        task->m_destPath = overrideTargetDir;
     } else {
         if (isValidOverridePath(m_downloadPath))
-            task->destPath = m_downloadPath;
+            task->m_destPath = m_downloadPath;
     }
 
     //LOG_DEBUG ("Override Target Filename : specified as [%s]",overrideTargetFile.c_str());
     if (!overrideTargetFile.empty()) {
         if (isValidOverrideFile(overrideTargetFile)) {
-            task->destFile = overrideTargetFile;
-            task->opt_keepOriginalFilenameOnRedirect = true;        //specifying a file override implies this
+            task->m_destFile = overrideTargetFile;
+            task->m_opt_keepOriginalFilenameOnRedirect = true;        //specifying a file override implies this
         } else {
             createTempFile = true; // create a temp file if the overrideTargetFile is invalid
         }
     } else {
-        if (parsedUrl.valid && !parsedUrl.resource.empty())
-            task->destFile = parsedUrl.resource;
+        if (parsedUrl.m_valid && !parsedUrl.m_resource.empty())
+            task->m_destFile = parsedUrl.m_resource;
         else
             createTempFile = true; // create a temp file if no file is specified in download url
     }
 
-    if (task->destPath.at((task->destPath.length() - 1)) != '/')
-        task->destPath = task->destPath + std::string("/");
+    if (task->m_destPath.at((task->m_destPath.length() - 1)) != '/')
+        task->m_destPath = task->m_destPath + std::string("/");
 
     //check free space on disk
     uint64_t spaceFreeKB = 0;
     uint64_t spaceTotalKB = 0;
     bool stopMarkReached = false;
-    if (!DownloadManager::spaceOnFs(task->destPath, spaceFreeKB, spaceTotalKB)) {
+    if (!DownloadManager::spaceOnFs(task->m_destPath, spaceFreeKB, spaceTotalKB)) {
         //can't stat the filesys...treat the same as out of space
         delete p_ttask;
         return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
@@ -351,27 +350,27 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
 
     this->filesystemStatusCheck(spaceFreeKB, spaceTotalKB, NULL, &stopMarkReached);
 
-    if (DownloadSettings::Settings()->preemptiveFreeSpaceCheck) {
+    if (DownloadSettings::Settings()->m_preemptiveFreeSpaceCheck) {
         if (stopMarkReached) {
             delete p_ttask;
             return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
         }
     }
 
-    task->url = uri;
-    task->cookieHeader = cookieHeader;
+    task->m_url = uri;
+    task->m_cookieHeader = cookieHeader;
     task->setMimeType("application/x-binary");  //default to this...pretty generic
-    task->bytesCompleted = 0;
-    task->bytesTotal = 0;
-    task->canHandlePause = canHandlePause;
-    task->autoResume = autoResume;
-    task->appendTargetFile = appendTargetFile;
-    task->rangeSpecified = range;
+    task->m_bytesCompleted = 0;
+    task->m_bytesTotal = 0;
+    task->m_canHandlePause = canHandlePause;
+    task->m_autoResume = autoResume;
+    task->m_appendTargetFile = appendTargetFile;
+    task->m_rangeSpecified = range;
 
     if (createTempFile == false) { // only if filename is provided
-        task->downloadPrefix = downloadPrefix;
-        std::string tmpFilePath = task->destPath + task->downloadPrefix + task->destFile;
-        std::string finalFilePath = task->destPath + task->destFile;
+        task->m_downloadPrefix = downloadPrefix;
+        std::string tmpFilePath = task->m_destPath + task->m_downloadPrefix + task->m_destFile;
+        std::string finalFilePath = task->m_destPath + task->m_destFile;
         // if app has specified the file, use that directly
         if (overrideTargetFile.empty()) {
             // check if the file already exists
@@ -380,14 +379,14 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
                 //LOG_DEBUG ("file of name %s or %s exists, will rename", finalFilePath.c_str(), tmpFilePath.c_str());
 
                 // file does exist. make a unique file adding [x] before the extension
-                unsigned int extPos = task->destFile.rfind('.');
+                unsigned int extPos = task->m_destFile.rfind('.');
                 int addExt = 0;
                 std::string fileName, fileExt;
                 if (extPos == std::string::npos) {
-                    fileName = task->destFile;
+                    fileName = task->m_destFile;
                 } else {
-                    fileName = task->destFile.substr(0, extPos);
-                    fileExt = task->destFile.substr(extPos);
+                    fileName = task->m_destFile.substr(0, extPos);
+                    fileExt = task->m_destFile.substr(extPos);
                 }
 
                 std::stringstream newFileName;
@@ -402,24 +401,24 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
                     //LOG_DEBUG ("new file name :%s", newFileName.str().c_str());
 
                     newTempFile.str("");
-                    newTempFile << task->destPath;
-                    newTempFile << task->downloadPrefix;
+                    newTempFile << task->m_destPath;
+                    newTempFile << task->m_downloadPrefix;
                     newTempFile << newFileName.str();
 
                     //LOG_DEBUG ("new temp file :%s", newTempFile.str().c_str());
 
                     newFinalFile.str("");
-                    newFinalFile << task->destPath;
+                    newFinalFile << task->m_destPath;
                     newFinalFile << newFileName.str();
 
                     //LOG_DEBUG ("new final file :%s", newFinalFile.str().c_str());
 
                 } while (g_file_test(newFinalFile.str().c_str(), G_FILE_TEST_EXISTS) || g_file_test(newTempFile.str().c_str(), G_FILE_TEST_EXISTS));
 
-                LOG_DEBUG(" Download : File Exist - Renaming existing file %s to %s", task->destFile.c_str(), newFileName.str().c_str());
+                LOG_DEBUG(" Download : File Exist - Renaming existing file %s to %s", task->m_destFile.c_str(), newFileName.str().c_str());
                 tmpFilePath = newTempFile.str();
                 finalFilePath = newFinalFile.str();
-                task->destFile = newFileName.str();
+                task->m_destFile = newFileName.str();
             }
         }
 
@@ -427,31 +426,31 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
 
         //open the file for writing
         if (appendTargetFile) {
-            task->fp = fopen(tmpFilePath.c_str(), "r+b");
+            task->m_fp = fopen(tmpFilePath.c_str(), "r+b");
 
-            if ((task->fp) && (range.second != 0) && (range.second > range.first)) {
-                if (fseek(task->fp, range.first, SEEK_SET) != 0) {
-                    fclose(task->fp);
-                    task->fp = NULL;
+            if ((task->m_fp) && (range.second != 0) && (range.second > range.first)) {
+                if (fseek(task->m_fp, range.first, SEEK_SET) != 0) {
+                    fclose(task->m_fp);
+                    task->m_fp = NULL;
                 }
             }
         } else {
-            task->fp = fopen(tmpFilePath.c_str(), "wb");
+            task->m_fp = fopen(tmpFilePath.c_str(), "wb");
         }
     } else {
-        if (task->destPath.at((task->destPath.length() - 1)) != '/')
-            task->destPath = task->destPath + std::string("/");
+        if (task->m_destPath.at((task->m_destPath.length() - 1)) != '/')
+            task->m_destPath = task->m_destPath + std::string("/");
 
-        std::string templateStr = task->destPath + std::string("fileXXXXXX");
+        std::string templateStr = task->m_destPath + std::string("fileXXXXXX");
         char * templateFileName = new char[templateStr.length() + 2];
         strcpy(templateFileName, templateStr.c_str());
         mode_t mask = umask(S_IRWXG | S_IRWXO);
         int fd = mkstemp(templateFileName);
         umask(mask);
 
-        task->destPath = "";
-        task->destFile = "";
-        splitFileAndPath(std::string(templateFileName), task->destPath, task->destFile);
+        task->m_destPath = "";
+        task->m_destFile = "";
+        splitFileAndPath(std::string(templateFileName), task->m_destPath, task->m_destFile);
         delete[] templateFileName;
 
         if (fd == -1) {
@@ -459,10 +458,10 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
             return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
         }
 
-        task->fp = fdopen(fd, "wb");
+        task->m_fp = fdopen(fd, "wb");
     }
 
-    if (task->fp == NULL) {
+    if (task->m_fp == NULL) {
         delete p_ttask;
         return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
     }
@@ -478,10 +477,10 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_CAPATH failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, task->url.c_str())) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, task->m_url.c_str())) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_URL failed [%d]\n", curlSetOptRc);
 
-    if (!(task->cookieHeader.empty()) && (curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_COOKIE, task->cookieHeader.c_str())) != CURLE_OK)
+    if (!(task->m_cookieHeader.empty()) && (curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_COOKIE, task->m_cookieHeader.c_str())) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_COOKIE failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_NOSIGNAL, 1L)) != CURLE_OK)
@@ -525,22 +524,22 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
 
     if (interface == Wired) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wiredInterfaceName.c_str()))) != CURLE_OK)
-            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->ticket);
-        task->connectionName = DownloadManager::connectionId2Name(Wired);
+            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
+        task->m_connectionName = DownloadManager::connectionId2Name(Wired);
     } else if (interface == Wifi) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wifiInterfaceName.c_str()))) != CURLE_OK)
-            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->ticket);
-        task->connectionName = DownloadManager::connectionId2Name(Wifi);
+            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
+        task->m_connectionName = DownloadManager::connectionId2Name(Wifi);
     } else if (interface == Wan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wanInterfaceName.c_str()))) != CURLE_OK)
-            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->ticket);
-        task->connectionName = DownloadManager::connectionId2Name(Wan);
+            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
+        task->m_connectionName = DownloadManager::connectionId2Name(Wan);
     } else if (interface == Btpan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_btpanInterfaceName.c_str()))) != CURLE_OK)
-            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->ticket);
-        task->connectionName = DownloadManager::connectionId2Name(Btpan);
+            LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
+        task->m_connectionName = DownloadManager::connectionId2Name(Btpan);
     } else {
-        task->connectionName = DownloadManager::connectionId2Name(ANY);     //TODO: get rid of this; really shouldn't get this far if there was no connection available
+        task->m_connectionName = DownloadManager::connectionId2Name(ANY);     //TODO: get rid of this; really shouldn't get this far if there was no connection available
     }
 
 //    LOG_DEBUG ("%s: [INTERFACE-CHOICE]: tried picking if=[%s] for ticket %lu (see above for any failed setopts)",__FUNCTION__,task->connectionName.c_str(),task->ticket);
@@ -564,35 +563,35 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n", curlSetOptRc);
 
-        task->curlDesc.setHeaderList(slist);
-        task->deviceId = deviceId;
-        task->authToken = authToken;
+        task->m_curlDesc.setHeaderList(slist);
+        task->m_deviceId = deviceId;
+        task->m_authToken = authToken;
         //LOG_DEBUG ("added deviceId %s and authToken %s", task->deviceId.c_str(), task->authToken.c_str());
     }
-    task->curlDesc.setHandle(curlHandle);
+    task->m_curlDesc.setHandle(curlHandle);
 
     //map the curl handle to the download task here, so that we can find the task in the callback
-    m_handleMap[task->curlDesc] = p_ttask;
+    m_handleMap[task->m_curlDesc] = p_ttask;
     //..and also map ticket to the download task, so that it can be found by luna requests querying the download status of a ticket
-    m_ticketMap[task->ticket] = task;
+    m_ticketMap[task->m_ticket] = task;
 
     // check whether to enqueue this or start the download immediately
-    if (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (m_activeTaskCount < DownloadSettings::Settings()->m_maxDownloadManagerConcurrent) {
         //add it to the pool of inprogress handles (this is all inside glib curl)
         m_activeTaskCount++;
         requestWakeLock(true);
-        task->queued = false;
-        glibcurl_add(task->curlDesc.getHandle());
+        task->m_isQueued = false;
+        glibcurl_add(task->m_curlDesc.getHandle());
         //LOG_DEBUG ("starting download of ticket [%lu] for url [%s]\n", task->ticket, task->url.c_str());
-        m_pDlDb->addHistory(task->ticket, caller, task->connectionName, "running", task->toJSONString());
+        m_pDlDb->addHistory(task->m_ticket, caller, task->m_connectionName, "running", task->toJSONString());
     } else {
-        task->queued = true;
-        m_queue.push_back(task->ticket);
+        task->m_isQueued = true;
+        m_queue.push_back(task->m_ticket);
         //LOG_DEBUG ("queued download of ticket [%lu]\n", task->ticket);
-        m_pDlDb->addHistory(task->ticket, caller, task->connectionName, "queued", task->toJSONString());
+        m_pDlDb->addHistory(task->m_ticket, caller, task->m_connectionName, "queued", task->toJSONString());
     }
 
-    return task->ticket;
+    return task->m_ticket;
 }
 
 int DownloadManager::resumeDownload(const unsigned long ticket, const std::string& authToken, const std::string& deviceId, std::string& r_err)
@@ -711,7 +710,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     this->filesystemStatusCheck(spaceFreeKB, spaceTotalKB, NULL, &stopMarkReached);
 
     uint64_t remainSize = totalSize - completedSize;
-    if (DownloadSettings::Settings()->preemptiveFreeSpaceCheck) {
+    if (DownloadSettings::Settings()->m_preemptiveFreeSpaceCheck) {
         if ((spaceFreeKB < (remainSize >> 10)) || (stopMarkReached)) {
             return DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL;
         }
@@ -771,7 +770,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     //ok, it was interrupted, and its fields are valid. Create a new task for it, but with the original ticket number
 
     // if the queue is already full, no point in continuing
-    if (m_queue.size() >= DownloadSettings::Settings()->maxDownloadManagerQueueLength) {
+    if (m_queue.size() >= DownloadSettings::Settings()->m_maxDownloadManagerQueueLength) {
         return DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL;
     }
 
@@ -799,44 +798,44 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     DownloadTask* p_dlTask = new DownloadTask;
     TransferTask * p_ttask = new TransferTask(p_dlTask);
 
-    p_dlTask->fp = fp;
+    p_dlTask->m_fp = fp;
 
     if (!m_glibCurlInitialized)
         startupGlibCurl();
 
-    p_dlTask->bytesCompleted = completedSize;
-    p_dlTask->bytesTotal = totalSize;
+    p_dlTask->m_bytesCompleted = completedSize;
+    p_dlTask->m_bytesTotal = totalSize;
     p_dlTask->setUpdateInterval();
-    p_dlTask->initialOffsetBytes = initialOffset;
+    p_dlTask->m_initialOffsetBytes = initialOffset;
 
     //parse the URI/URL
     //UrlRep parsedUrl = UrlRep::fromUrl(uri.c_str());
 
-    p_dlTask->ticket = history.m_ticket;
-    p_dlTask->opt_keepOriginalFilenameOnRedirect = false;
-    p_dlTask->url = uri;
-    p_dlTask->cookieHeader = cookieHeader;
-    p_dlTask->destPath = destFinalPath;
-    p_dlTask->destFile = destFinalFile;
-    p_dlTask->downloadPrefix = destTempPrefix;
-    p_dlTask->ownerId = history.m_owner;
-    p_dlTask->canHandlePause = canHandlePause;
-    p_dlTask->autoResume = taskAutoResume;
+    p_dlTask->m_ticket = history.m_ticket;
+    p_dlTask->m_opt_keepOriginalFilenameOnRedirect = false;
+    p_dlTask->m_url = uri;
+    p_dlTask->m_cookieHeader = cookieHeader;
+    p_dlTask->m_destPath = destFinalPath;
+    p_dlTask->m_destFile = destFinalFile;
+    p_dlTask->m_downloadPrefix = destTempPrefix;
+    p_dlTask->m_ownerId = history.m_owner;
+    p_dlTask->m_canHandlePause = canHandlePause;
+    p_dlTask->m_autoResume = taskAutoResume;
 
     //LOG_DEBUG ("%s: Interface %s and allow1x is %s",__FUNCTION__,history.m_interface.c_str(),(s_allow1x ? "TRUE" : "FALSE"));
     if (isInterfaceUp(connectionName2Id(history.m_interface))) {
-        p_dlTask->connectionName = history.m_interface;
+        p_dlTask->m_connectionName = history.m_interface;
     } else {
         LOG_WARNING_PAIRS_ONLY(LOGID_INTERFACE_FAIL_ON_RESUME, 1, PMLOGKS("interface name", history.m_interface.c_str()));
         //determine a good interface to use
         if (m_wiredConnectionStatus == DownloadManager::InetConnectionConnected)
-            p_dlTask->connectionName = connectionId2Name(Wired);
+            p_dlTask->m_connectionName = connectionId2Name(Wired);
         else if (m_wifiConnectionStatus == DownloadManager::InetConnectionConnected)
-            p_dlTask->connectionName = connectionId2Name(Wifi);
+            p_dlTask->m_connectionName = connectionId2Name(Wifi);
         else if (m_wanConnectionStatus == DownloadManager::InetConnectionConnected)
-            p_dlTask->connectionName = connectionId2Name(Wan);
+            p_dlTask->m_connectionName = connectionId2Name(Wan);
         else if (m_btpanConnectionStatus == DownloadManager::InetConnectionConnected)
-            p_dlTask->connectionName = connectionId2Name(Btpan);
+            p_dlTask->m_connectionName = connectionId2Name(Btpan);
     }
 
     CURL * curlHandle;
@@ -849,7 +848,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_CAPATH failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, p_dlTask->url.c_str())) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, p_dlTask->m_url.c_str())) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_URL failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_NOSIGNAL, 1L)) != CURLE_OK)
@@ -891,24 +890,24 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HEADERFUNCTION, cbCurlHeaderInfo)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_HEADERFUNCTION failed [%d]\n", curlSetOptRc);
 
-    if (DownloadManager::connectionName2Id(p_dlTask->connectionName) == Wired) {
+    if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wired) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wiredInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
-    } else if (DownloadManager::connectionName2Id(p_dlTask->connectionName) == Wifi) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wifi) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wifiInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
-    } else if (DownloadManager::connectionName2Id(p_dlTask->connectionName) == Wan) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
-    } else if (DownloadManager::connectionName2Id(p_dlTask->connectionName) == Btpan) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Btpan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_btpanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
     }
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_RESUME_FROM_LARGE, (curl_off_t )(p_dlTask->bytesCompleted))) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_RESUME_FROM_LARGE, (curl_off_t )(p_dlTask->m_bytesCompleted))) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_RESUME_FROM_LARGE failed [%d]\n", curlSetOptRc);
 
     if (!authTokenToUse.empty() && !deviceIdToUse.empty()) {
@@ -922,31 +921,31 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n", curlSetOptRc);
 
-        p_dlTask->curlDesc.setHeaderList(slist);
-        p_dlTask->deviceId = deviceIdToUse;
-        p_dlTask->authToken = authTokenToUse;
+        p_dlTask->m_curlDesc.setHeaderList(slist);
+        p_dlTask->m_deviceId = deviceIdToUse;
+        p_dlTask->m_authToken = authTokenToUse;
     }
-    p_dlTask->curlDesc.setHandle(curlHandle);
+    p_dlTask->m_curlDesc.setHandle(curlHandle);
 
     //map the curl handle to the download task here, so that we can find the task in the callback
-    m_handleMap[p_dlTask->curlDesc] = p_ttask;
+    m_handleMap[p_dlTask->m_curlDesc] = p_ttask;
     //..and also map ticket to the download task, so that it can be found by luna requests querying the download status of a ticket
-    m_ticketMap[p_dlTask->ticket] = p_dlTask;
+    m_ticketMap[p_dlTask->m_ticket] = p_dlTask;
 
     // check whether to enqueue this or start the download immediately
-    if (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (m_activeTaskCount < DownloadSettings::Settings()->m_maxDownloadManagerConcurrent) {
         //add it to the pool of inprogress handles (this is all inside glib curl)
         m_activeTaskCount++;
         requestWakeLock(true);
-        p_dlTask->queued = false;
-        glibcurl_add(p_dlTask->curlDesc.getHandle());
+        p_dlTask->m_isQueued = false;
+        glibcurl_add(p_dlTask->m_curlDesc.getHandle());
         //LOG_DEBUG ("starting (resuming) download of ticket [%lu] for url [%s] on interface [%s]\n", p_dlTask->ticket, p_dlTask->url.c_str(),p_dlTask->connectionName.c_str());
-        m_pDlDb->addHistory(p_dlTask->ticket, p_dlTask->ownerId, p_dlTask->connectionName, "running", p_dlTask->toJSONString());
+        m_pDlDb->addHistory(p_dlTask->m_ticket, p_dlTask->m_ownerId, p_dlTask->m_connectionName, "running", p_dlTask->toJSONString());
     } else {
-        p_dlTask->queued = true;
-        m_queue.push_back(p_dlTask->ticket);
+        p_dlTask->m_isQueued = true;
+        m_queue.push_back(p_dlTask->m_ticket);
         //LOG_DEBUG ("queued download of ticket [%lu]\n", p_dlTask->ticket);
-        m_pDlDb->addHistory(p_dlTask->ticket, p_dlTask->ownerId, p_dlTask->connectionName, "queued", p_dlTask->toJSONString());
+        m_pDlDb->addHistory(p_dlTask->m_ticket, p_dlTask->m_ownerId, p_dlTask->m_connectionName, "queued", p_dlTask->toJSONString());
     }
 
     return DOWNLOADMANAGER_RESUMESTATUS_OK;
@@ -1035,7 +1034,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
         return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
     }
 
-    if (!iter->second->canHandlePause) {
+    if (!iter->second->m_canHandlePause) {
         LOG_WARNING_PAIRS(LOGID_NOTABLE_TO_PAUSE, 1, PMLOGKFV("ticket", "%lu", ticket), "cannot handle this pause request, it will be canceled");
         cancel(ticket);
         return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
@@ -1048,8 +1047,8 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
         return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
     }
 
-    DownloadTask * task = _task->p_downloadTask;
-    LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_PAUSE, 2, PMLOGKFV("ticket", "%lu", task->ticket), PMLOGKS("url", task->url.c_str()));
+    DownloadTask * task = _task->m_downloadTask;
+    LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_PAUSE, 2, PMLOGKFV("ticket", "%lu", task->m_ticket), PMLOGKS("url", task->m_url.c_str()));
 
     LSError lserror;
     LSErrorInit(&lserror);
@@ -1059,7 +1058,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
 
     payloadJsonObj.put("completionStatusCode", DOWNLOADMANAGER_COMPLETIONSTATUS_INTERRUPTED);
 
-    std::string dest = task->destPath + task->downloadPrefix + task->destFile;
+    std::string dest = task->m_destPath + task->m_downloadPrefix + task->m_destFile;
     payloadJsonObj.put("interrupted", true);
     payloadJsonObj.put("completed", false);
     payloadJsonObj.put("aborted", false);
@@ -1067,32 +1066,32 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
 
     payload = JUtil::toSimpleString(payloadJsonObj);
 
-    if (!(DownloadSettings::Settings()->appCompatibilityMode)) {
-        if (!postDownloadUpdate(task->ownerId, ticket, payload)) {
+    if (!(DownloadSettings::Settings()->m_appCompatibilityMode)) {
+        if (!postDownloadUpdate(task->m_ownerId, ticket, payload)) {
             LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_PAUSE, 1, PMLOGKFV("ticket", "%lu", ticket), "failed to update pause status to subscribers");
         }
     }
 
     std::string historyString = JUtil::toSimpleString(payloadJsonObj);
     //add to database record
-    m_pDlDb->addHistory(task->ticket, task->ownerId, task->connectionName, "interrupted", historyString);
-    removeTask_dl(task->ticket);
+    m_pDlDb->addHistory(task->m_ticket, task->m_ownerId, task->m_connectionName, "interrupted", historyString);
+    removeTask_dl(task->m_ticket);
     delete _task;
 
     // if an active task has been paused, the next download should start
-    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) && allowQueuedToStart) {
+    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->m_maxDownloadManagerConcurrent) && allowQueuedToStart) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long, DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
         if (iter != m_ticketMap.end()) {
             DownloadTask* nextDownload = iter->second;
-            nextDownload->queued = false;
+            nextDownload->m_isQueued = false;
             m_activeTaskCount++;
             requestWakeLock(true);
-            glibcurl_add(nextDownload->curlDesc.getHandle());
+            glibcurl_add(nextDownload->m_curlDesc.getHandle());
             //LOG_DEBUG ("%s: starting download of ticket [%lu] for url [%s] deviceId %s authToken %s\n", __PRETTY_FUNCTION__,
             //nextDownload->ticket, nextDownload->url.c_str(), nextDownload->authToken.c_str(), nextDownload->deviceId.c_str());
-            m_pDlDb->addHistory(nextDownload->ticket, nextDownload->ownerId, task->connectionName, "running", nextDownload->toJSONString());
+            m_pDlDb->addHistory(nextDownload->m_ticket, nextDownload->m_ownerId, task->m_connectionName, "running", nextDownload->toJSONString());
         }
     }
     return DOWNLOADMANAGER_PAUSESTATUS_OK;
@@ -1117,7 +1116,7 @@ int DownloadManager::pauseAllForInterface(Connection interface)
     //Can't do this directly because the pause() fn modifies the map I'm iterating on. Do it via intermediate list
     std::list<long> tickets;
     for (std::map<long, DownloadTask*>::iterator it = m_ticketMap.begin(); it != m_ticketMap.end(); ++it) {
-        if (interface == DownloadManager::connectionName2Id(it->second->connectionName))
+        if (interface == DownloadManager::connectionName2Id(it->second->m_connectionName))
             tickets.push_back(it->first);
     }
     for (std::list<long>::iterator it = tickets.begin(); it != tickets.end(); ++it) {
@@ -1140,15 +1139,15 @@ int DownloadManager::swapToInterface(const unsigned long int ticket, const Conne
 
     DownloadTask * pDltask = it->second;
     //if the task interface is ANY, cannot be swapped
-    if (pDltask->connectionName == DownloadManager::connectionId2Name(ANY))
+    if (pDltask->m_connectionName == DownloadManager::connectionId2Name(ANY))
         return SWAPTOIF_ERROR_INVALIDIF;
     //check the interface the task is on right now
-    if (pDltask->connectionName == DownloadManager::connectionId2Name(newInterface))
+    if (pDltask->m_connectionName == DownloadManager::connectionId2Name(newInterface))
         return SWAPTOIF_SUCCESS;        //already on the specified interface
 
-    if (pDltask->queued == false) {
+    if (pDltask->m_isQueued == false) {
         //remove the curl descriptor from glib_curl temporarily         TODO: check for error
-        glibcurl_remove(pDltask->curlDesc.getHandle());
+        glibcurl_remove(pDltask->m_curlDesc.getHandle());
     }
     //change its interface option
 
@@ -1169,22 +1168,22 @@ int DownloadManager::swapToInterface(const unsigned long int ticket, const Conne
         return SWAPTOIF_ERROR_INVALIDIF;        //to make switch happy
     }
 
-    pDltask->connectionName = DownloadManager::connectionId2Name(newInterface);
+    pDltask->m_connectionName = DownloadManager::connectionId2Name(newInterface);
     int curlSetOptRc;
-    if ((curlSetOptRc = curl_easy_setopt(pDltask->curlDesc.getHandle(), CURLOPT_INTERFACE, const_cast<char*>(ifaceName.c_str()))) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(pDltask->m_curlDesc.getHandle(), CURLOPT_INTERFACE, const_cast<char*>(ifaceName.c_str()))) != CURLE_OK)
         LOG_DEBUG("%s: curl set opt: CURLOPT_INTERFACE to if=[%s] failed [%d]", __FUNCTION__, ifaceName.c_str(), curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(pDltask->curlDesc.getHandle(), CURLOPT_RESUME_FROM_LARGE, (uint64_t )(pDltask->bytesCompleted))) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(pDltask->m_curlDesc.getHandle(), CURLOPT_RESUME_FROM_LARGE, (uint64_t )(pDltask->m_bytesCompleted))) != CURLE_OK)
         LOG_DEBUG("%s: curl set opt: CURLOPT_RESUME_FROM_LARGE failed [%d]", __FUNCTION__, curlSetOptRc);
 
-    if (pDltask->queued == false) {
+    if (pDltask->m_isQueued == false) {
         //re-add the handle
-        glibcurl_add(pDltask->curlDesc.getHandle());
+        glibcurl_add(pDltask->m_curlDesc.getHandle());
         //change its history record to reflect the new interface
-        m_pDlDb->addHistory(pDltask->ticket, pDltask->ownerId, pDltask->connectionName, "running", pDltask->toJSONString());
+        m_pDlDb->addHistory(pDltask->m_ticket, pDltask->m_ownerId, pDltask->m_connectionName, "running", pDltask->toJSONString());
     } else {
         //change its history record to reflect the new interface
-        m_pDlDb->addHistory(pDltask->ticket, pDltask->ownerId, pDltask->connectionName, "queued", pDltask->toJSONString());
+        m_pDlDb->addHistory(pDltask->m_ticket, pDltask->m_ownerId, pDltask->m_connectionName, "queued", pDltask->toJSONString());
     }
 
     return SWAPTOIF_SUCCESS;
@@ -1246,12 +1245,12 @@ size_t DownloadManager::cbHeader(CURL * taskHandle, size_t headerSize, const cha
 
     //PAST THIS POINT, IT MUST BE A DOWNLOAD TASK
 
-    if (_task->type != TransferTask::DOWNLOAD_TASK) {
+    if (_task->m_type != TransferTask::DOWNLOAD_TASK) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return headerSize;
     }
 
-    DownloadTask * task = _task->p_downloadTask;
+    DownloadTask * task = _task->m_downloadTask;
 
     //LOG_DEBUG ("cbHeader(): headerLabel = %s , headerContent = %s\n",headerLabel.c_str(),headerContent.c_str());
     if (headerLabel.compare("content-length") == 0) {
@@ -1271,14 +1270,14 @@ size_t DownloadManager::cbHeader(CURL * taskHandle, size_t headerSize, const cha
         //              then the content length will be incorrect because the server is sending the REMAINING length
         //              ...fix it up by adding what was already received
 
-        if ((task->bytesCompleted > 0) && (task->bytesTotal == 0)) {
-            task->bytesTotal = contentLength + task->bytesCompleted;
+        if ((task->m_bytesCompleted > 0) && (task->m_bytesTotal == 0)) {
+            task->m_bytesTotal = contentLength + task->m_bytesCompleted;
             task->setUpdateInterval();
-            LOG_DEBUG("%s: Fixing up Content-Length to %llu, and this looks like a Resume download", __FUNCTION__, task->bytesTotal);
-        } else if (task->bytesCompleted == 0) {
+            LOG_DEBUG("%s: Fixing up Content-Length to %llu, and this looks like a Resume download", __FUNCTION__, task->m_bytesTotal);
+        } else if (task->m_bytesCompleted == 0) {
             // THIS IS A FRESHLY STARTED DOWNLOAD, NOT A RESUME
             //LOG_DEBUG ("%s: Content-Length = %lu, and this is a FreshStart download",__FUNCTION__,task->bytesTotal);
-            task->bytesTotal = contentLength;
+            task->m_bytesTotal = contentLength;
             task->setUpdateInterval();
             //LOG_DEBUG ("%s: Updated Content-Length = %lu, and this is a FreshStart download",__FUNCTION__,task->bytesTotal);
             // 1.3.5 - try and "truncate" the file to the size reported, so that the space is "taken"
@@ -1344,17 +1343,17 @@ size_t DownloadManager::cbGlib()
             if (_task == NULL)
                 goto Return_cbGlib;
 
-            if (_task->type == TransferTask::DOWNLOAD_TASK) {
+            if (_task->m_type == TransferTask::DOWNLOAD_TASK) {
 
                 //complete this transfer..remove the task...
-                dl_task = _task->p_downloadTask;
+                dl_task = _task->m_downloadTask;
                 if (dl_task != NULL) {
-                    dl_task->curlDesc.setResultCode(resultCode);
-                    dl_task->curlDesc.setHttpResultCode(l_httpCode);
-                    dl_task->curlDesc.setHttpConnectCode(l_httpConnectCode);
+                    dl_task->m_curlDesc.setResultCode(resultCode);
+                    dl_task->m_curlDesc.setHttpResultCode(l_httpCode);
+                    dl_task->m_curlDesc.setHttpConnectCode(l_httpConnectCode);
                 }
-            } else if (_task->type == TransferTask::UPLOAD_TASK) {
-                ul_task = _task->p_uploadTask;
+            } else if (_task->m_type == TransferTask::UPLOAD_TASK) {
+                ul_task = _task->m_uploadTask;
                 if (ul_task != NULL) {
                     ul_task->setCURLCode(resultCode);
                     ul_task->setHTTPCode(l_httpCode);
@@ -1392,53 +1391,53 @@ size_t DownloadManager::cbWriteEvent(CURL * taskHandle, size_t payloadSize, unsi
         return 0;
     }
 
-    if ((_task->type != TransferTask::DOWNLOAD_TASK)) {
+    if ((_task->m_type != TransferTask::DOWNLOAD_TASK)) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
-    DownloadTask * task = _task->p_downloadTask;
+    DownloadTask * task = _task->m_downloadTask;
 
     //write to file if the fp is not null
     size_t nwritten = 0;
-    if (task->fp) {
-        nwritten = fwrite(payload, 1, payloadSize, task->fp);
+    if (task->m_fp) {
+        nwritten = fwrite(payload, 1, payloadSize, task->m_fp);
         if ((nwritten < (size_t) payloadSize)) {
-            task->numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;           //hack...fail it immediately  TODO: rewrite this
+            task->m_numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;           //hack...fail it immediately  TODO: rewrite this
         }
     }
 
-    if ((task->fp == NULL) || (task->numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
+    if ((task->m_fp == NULL) || (task->m_numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
         LOG_WARNING_PAIRS(LOGID_EXCEED_ERROR_THRESHOLD, 2, PMLOGKFV("total bytes", "%u", nwritten), PMLOGKFV("payload size", "%u", payloadSize), "this task will be discarded, marked as 'removed'");
         //null file pointer? or num errors during this transfer was too high... this download isn't going anywhere...complete it
         _task->m_remove = true;
-        task->bytesCompleted = 0;           //file is basically unusable here           TODO: investigate issues with append
+        task->m_bytesCompleted = 0;           //file is basically unusable here           TODO: investigate issues with append
         payloadSize = 0;            //this will kill the transfer when it is returned, below
         goto Return_cbWriteEvent;
     }
 
     //update the bytesCompleted
-    task->bytesCompleted += payloadSize;
+    task->m_bytesCompleted += payloadSize;
 //    LOG_DEBUG ("%s: Task bytes completed now = %ld",__FUNCTION__,task->bytesCompleted);
 
-    if ((task->lastUpdateAt == 0) || (task->bytesCompleted - task->lastUpdateAt >= task->updateInterval)) {
+    if ((task->m_lastUpdateAt == 0) || (task->m_bytesCompleted - task->m_lastUpdateAt >= task->m_updateInterval)) {
         LSError lserror;
         LSErrorInit(&lserror);
-        std::string key = ConvertToString<unsigned long>(task->ticket);
-        std::string bytesCompletedStr = ConvertToString<uint32_t>((uint32_t) (task->bytesCompleted));
-        std::string e_bytesCompletedStr = ConvertToString<uint64_t>(task->bytesCompleted);
-        std::string bytesTotalStr = ConvertToString<uint32_t>((uint32_t) (task->bytesTotal));
-        std::string e_bytesTotalStr = ConvertToString<uint64_t>(task->bytesTotal);
+        std::string key = ConvertToString<unsigned long>(task->m_ticket);
+        std::string bytesCompletedStr = ConvertToString<uint32_t>((uint32_t) (task->m_bytesCompleted));
+        std::string e_bytesCompletedStr = ConvertToString<uint64_t>(task->m_bytesCompleted);
+        std::string bytesTotalStr = ConvertToString<uint32_t>((uint32_t) (task->m_bytesTotal));
+        std::string e_bytesTotalStr = ConvertToString<uint64_t>(task->m_bytesTotal);
         std::string response = std::string("{ \"ticket\":") + key + std::string(" , \"amountReceived\":") + bytesCompletedStr + std::string(" , \"e_amountReceived\":\"") + e_bytesCompletedStr
                 + std::string("\"") + std::string(" , \"amountTotal\":") + bytesTotalStr + std::string(" , \"e_amountTotal\":\"") + e_bytesTotalStr + std::string("\"") + std::string(" }");
 
-        fdatasync(fileno(task->fp));
-        if (!postDownloadUpdate(task->ownerId, task->ticket, response)) {
+        fdatasync(fileno(task->m_fp));
+        if (!postDownloadUpdate(task->m_ownerId, task->m_ticket, response)) {
             LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_WRITEDATA, 2, PMLOGKS("ticket", key.c_str()), PMLOGKS("detail", response.c_str()), "failed to update write-progress to subscribers");
         } else {
             LOG_DEBUG("[download progress] sent [%s] to subscriptions for ticket [%s]", response.c_str(), key.c_str());
         }
 
-        task->lastUpdateAt = task->bytesCompleted;
+        task->m_lastUpdateAt = task->m_bytesCompleted;
     }
 
     Return_cbWriteEvent:
@@ -1464,54 +1463,54 @@ size_t DownloadManager::cbReadEvent(CURL* taskHandle, size_t payloadSize, unsign
         return 0;
     }
 
-    if (_task->type != TransferTask::DOWNLOAD_TASK) {
+    if (_task->m_type != TransferTask::DOWNLOAD_TASK) {
 //      LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
 
-    DownloadTask * task = _task->p_downloadTask;
+    DownloadTask * task = _task->m_downloadTask;
 
     //read from file if the fp is not null
     size_t nwritten;
-    if (task->fp) {
-        nwritten = fread(payload, 1, payloadSize, task->fp);
+    if (task->m_fp) {
+        nwritten = fread(payload, 1, payloadSize, task->m_fp);
         if ((nwritten < (size_t) payloadSize)) {
-            task->numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;
+            task->m_numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;
         }
     }
 
-    if ((task->fp == NULL) || (task->numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
+    if ((task->m_fp == NULL) || (task->m_numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
         //null file pointer? or num errors during this transfer was too high... this download isn't going anywhere...complete it
 //        removeTask(taskHandle);           ///AWKWARD!
 //        completed(_task);
 //        return 0; //get out
         _task->m_remove = true;
-        task->bytesCompleted = 0;           //file is basically unusable here           TODO: investigate issues with append
-        LOG_DEBUG("%s: err case: backing up to %llu bytes", __FUNCTION__, task->bytesCompleted);
+        task->m_bytesCompleted = 0;           //file is basically unusable here           TODO: investigate issues with append
+        LOG_DEBUG("%s: err case: backing up to %llu bytes", __FUNCTION__, task->m_bytesCompleted);
         payloadSize = 0;            //this will kill the transfer when it is returned, below
         goto Return_cbReadEvent;
     }
 
-    task->bytesCompleted += payloadSize;
+    task->m_bytesCompleted += payloadSize;
     //LOG_DEBUG ("%s: Task bytes completed now = %ld",__FUNCTION__,task->bytesCompleted);
 
-    if ((task->lastUpdateAt == 0) || (task->bytesCompleted - task->lastUpdateAt >= DOWNLOADMANAGER_UPDATEINTERVAL)) {
+    if ((task->m_lastUpdateAt == 0) || (task->m_bytesCompleted - task->m_lastUpdateAt >= DOWNLOADMANAGER_UPDATEINTERVAL)) {
         LSError lserror;
         LSErrorInit(&lserror);
 
-        std::string key = ConvertToString<long>(task->ticket);
-        std::string bytesCompletedStr = ConvertToString<int32_t>(task->bytesCompleted);
-        std::string bytesTotalStr = ConvertToString<int32_t>(task->bytesTotal);
-        std::string e_bytesCompletedStr = ConvertToString<uint64_t>(task->bytesCompleted);
-        std::string e_bytesTotalStr = ConvertToString<uint64_t>(task->bytesTotal);
+        std::string key = ConvertToString<long>(task->m_ticket);
+        std::string bytesCompletedStr = ConvertToString<int32_t>(task->m_bytesCompleted);
+        std::string bytesTotalStr = ConvertToString<int32_t>(task->m_bytesTotal);
+        std::string e_bytesCompletedStr = ConvertToString<uint64_t>(task->m_bytesCompleted);
+        std::string e_bytesTotalStr = ConvertToString<uint64_t>(task->m_bytesTotal);
         std::string response = std::string("{ \"ticket\":") + key + std::string(" , \"amountSent\":") + bytesCompletedStr + std::string(" , \"e_amountSent\":\"") + e_bytesCompletedStr
                 + std::string("\"") + std::string(" , \"amountTotal\":") + bytesTotalStr + std::string(" , \"e_amountTotal\":\"") + e_bytesTotalStr + std::string("\"") + std::string(" }");
 
-        if (!postDownloadUpdate(task->ownerId, task->ticket, response)) {
+        if (!postDownloadUpdate(task->m_ownerId, task->m_ticket, response)) {
             LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_READDATA, 2, PMLOGKS("ticket", key.c_str()), PMLOGKS("detail", response.c_str()), "failed to update read-progress to subscribers");
         }
 
-        task->lastUpdateAt = task->bytesCompleted;
+        task->m_lastUpdateAt = task->m_bytesCompleted;
     }
     Return_cbReadEvent:
 
@@ -1554,10 +1553,10 @@ void DownloadManager::completed(TransferTask * task)
         return;
     }
 
-    if (task->type == TransferTask::DOWNLOAD_TASK)
-        completed_dl(task->p_downloadTask);
-    if (task->type == TransferTask::UPLOAD_TASK)
-        completed_ul(task->p_uploadTask);
+    if (task->m_type == TransferTask::DOWNLOAD_TASK)
+        completed_dl(task->m_downloadTask);
+    if (task->m_type == TransferTask::UPLOAD_TASK)
+        completed_ul(task->m_uploadTask);
 
     delete task;
 
@@ -1573,14 +1572,14 @@ void DownloadManager::completed_dl(DownloadTask* task)
     bool transferError = false;
     bool interrupted = false;
     //close the file being written to
-    if (task->fp) {
-        fclose(task->fp);
-        task->fp = NULL;
+    if (task->m_fp) {
+        fclose(task->m_fp);
+        task->m_fp = NULL;
         //LOG_DEBUG ("DownloadManager::completed(): closed output file");
     }
 
-    long httpConnectCode = task->curlDesc.getHttpConnectCode();
-    long resultCode = task->curlDesc.getHttpResultCode();
+    long httpConnectCode = task->m_curlDesc.getHttpConnectCode();
+    long resultCode = task->m_curlDesc.getHttpResultCode();
     long httpResultCode = resultCode;
     //check the curl error code first...a connection/network error could have occurred
 
@@ -1597,15 +1596,15 @@ void DownloadManager::completed_dl(DownloadTask* task)
 
             if (task->getRemainingRedCounts() == 0) {
                 LOG_DEBUG("It has been completed to try maximum of redirections 5.");
-                cancel(task->ticket);
+                cancel(task->m_ticket);
                 return;
             }
 
             //HTTP Redirect. If there was a "Location" specified in the headers, then go try it. Otherwise, it's an error
-            if (task->httpHeader_Location != std::string("")) {
+            if (task->m_httpHeaderLocation != std::string("")) {
                 //delete the "downloaded" file...probably just a fragment of html that was sent by the server as an informative "moved" message.
                 //since I'm not a browser, i'll ignore this
-                std::string oldfile = task->destPath + task->destFile;
+                std::string oldfile = task->m_destPath + task->m_destFile;
                 int ret = g_remove((const gchar *) (oldfile.c_str()));
 
                 if (0 != ret) {
@@ -1613,30 +1612,30 @@ void DownloadManager::completed_dl(DownloadTask* task)
                 }
 
                 //LOG_DEBUG ("Redirect to [%s]... restarting download\n",task->httpHeader_Location.c_str());
-                if (task->opt_keepOriginalFilenameOnRedirect == false)
-                    task->destFile = std::string("");
+                if (task->m_opt_keepOriginalFilenameOnRedirect == false)
+                    task->m_destFile = std::string("");
 
                 //LOG_DEBUG ("task: location [%s], destPath [%s], destFile [%s], ticket [%lu]\n",
                 //      task->httpHeader_Location.c_str(),task->destPath.c_str(),task->destFile.c_str(), task->ticket);
-                download(task->ownerId, task->httpHeader_Location, task->detectedMIMEType, task->destPath, task->destFile, task->ticket, task->opt_keepOriginalFilenameOnRedirect, std::string(""),
-                        std::string(""), DownloadManager::connectionName2Id(task->connectionName), task->canHandlePause, task->autoResume, task->appendTargetFile, task->cookieHeader,
-                        task->rangeSpecified, task->getRemainingRedCounts());
-                LOG_DEBUG("[REDIRECT] ticket [%s] is now [%lu]", (task->httpHeader_Location).c_str(), (task->ticket));
+                download(task->m_ownerId, task->m_httpHeaderLocation, task->m_detectedMIMEType, task->m_destPath, task->m_destFile, task->m_ticket, task->m_opt_keepOriginalFilenameOnRedirect, std::string(""),
+                        std::string(""), DownloadManager::connectionName2Id(task->m_connectionName), task->m_canHandlePause, task->m_autoResume, task->m_appendTargetFile, task->m_cookieHeader,
+                        task->m_rangeSpecified, task->getRemainingRedCounts());
+                LOG_DEBUG("[REDIRECT] ticket [%s] is now [%lu]", (task->m_httpHeaderLocation).c_str(), (task->m_ticket));
                 return;
             }
         } else if (resultCode >= 400) {
             LOG_DEBUG("DownloadManager::completed(): Transfer error: HTTP error code = %d\n", (int )resultCode);
-            LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->url.c_str());
+            LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
             //HTTP error of some kind
             resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_HTTPERROR;
             transferError = true;
             interrupted = false;
         }
     } //end else - NOT a connection/CURL error
-    else if (task->curlDesc.getResultCode() != CURLE_OK) {
-        LOG_DEBUG("DownloadManager::completed(): Transfer error: CURL error code = %d\n", (int )task->curlDesc.getResultCode());
-        LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->url.c_str());
-        resultCode = task->curlDesc.getResultCode();
+    else if (task->m_curlDesc.getResultCode() != CURLE_OK) {
+        LOG_DEBUG("DownloadManager::completed(): Transfer error: CURL error code = %d\n", (int )task->m_curlDesc.getResultCode());
+        LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
+        resultCode = task->m_curlDesc.getResultCode();
         if (resultCode == CURLE_OPERATION_TIMEDOUT) {
             resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_CONNECTTIMEOUT;
             transferError = false;
@@ -1647,23 +1646,23 @@ void DownloadManager::completed_dl(DownloadTask* task)
             interrupted = true;
         } else {
             resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR;
-            if (task->bytesTotal > 0) {
+            if (task->m_bytesTotal > 0) {
                 transferError = false;
                 interrupted = true;
             } else {
                 transferError = true;
             }
         }
-    } else if (task->bytesCompleted < task->bytesTotal) {
+    } else if (task->m_bytesCompleted < task->m_bytesTotal) {
         //sizes don't match...maybe a filesys error
-        LOG_DEBUG("DownloadManager::completed(): Transfer error: bytesCompleted [%llu] < [%llu] bytesTotal...filesys error?", task->bytesCompleted, task->bytesTotal);
-        LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->url.c_str());
+        LOG_DEBUG("DownloadManager::completed(): Transfer error: bytesCompleted [%llu] < [%llu] bytesTotal...filesys error?", task->m_bytesCompleted, task->m_bytesTotal);
+        LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
         resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_FILECORRUPT;
         transferError = false;
         interrupted = true;
     }
 
-    if (interrupted && !task->canHandlePause) {
+    if (interrupted && !task->m_canHandlePause) {
         transferError = true;
         resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR;
     }
@@ -1675,24 +1674,24 @@ void DownloadManager::completed_dl(DownloadTask* task)
     if (transferError) {            //TODO: key on whether resultCode was a connection-establish related error, rather than bytesTotal=0. This works for now because bytesTotal
                                     // is only populated if the server was successfully contacted at least long enough to get headers
         //this is a true error.
-        unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
-        payloadJsonObj.put("errorCode", (int) task->curlDesc.getResultCode());
-        payloadJsonObj.put("errorText", curl_easy_strerror(task->curlDesc.getResultCode()));
-    } else if (!task->downloadPrefix.empty() && !interrupted) {
+        unlink(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str());
+        payloadJsonObj.put("errorCode", (int) task->m_curlDesc.getResultCode());
+        payloadJsonObj.put("errorText", curl_easy_strerror(task->m_curlDesc.getResultCode()));
+    } else if (!task->m_downloadPrefix.empty() && !interrupted) {
         //LOG_DEBUG ("renaming %s to %s", std::string(task->destPath + task->downloadPrefix + task->destFile).c_str(),
         //      std::string(task->destPath+task->destFile).c_str());
 
-        int retVal = rename(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str(), std::string(task->destPath + task->destFile).c_str());
+        int retVal = rename(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str(), std::string(task->m_destPath + task->m_destFile).c_str());
 
         if (0 != retVal) {
             LOG_DEBUG("renaming failed, setting file system error (%d)", DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR);
-            unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
+            unlink(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str());
             transferError = true;
             resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR;
         }
 
         // file sync after rename()
-        FILE *fp = fopen(std::string(task->destPath + task->destFile).c_str(), "r+b");
+        FILE *fp = fopen(std::string(task->m_destPath + task->m_destFile).c_str(), "r+b");
         if (fp) {
             fdatasync(fileno(fp));
             fclose(fp);
@@ -1701,16 +1700,16 @@ void DownloadManager::completed_dl(DownloadTask* task)
     }
 
     if (!transferError && !interrupted && (httpResultCode == 200 || httpResultCode == 206)) {
-        LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_COMPLETE, 2, PMLOGKFV("ticket", "%lu", task->ticket), PMLOGKS("URL", task->url.c_str()));
+        LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_COMPLETE, 2, PMLOGKFV("ticket", "%lu", task->m_ticket), PMLOGKS("URL", task->m_url.c_str()));
     } else {
         LOG_WARNING_PAIRS_ONLY(LOGID_DOWNLOAD_FAIL, 3,
-                               PMLOGKFV("ticket", "%lu", task->ticket),
-                               PMLOGKFV("CURL status code", "%d", task->curlDesc.getResultCode()),
+                               PMLOGKFV("ticket", "%lu", task->m_ticket),
+                               PMLOGKFV("CURL status code", "%d", task->m_curlDesc.getResultCode()),
                                PMLOGKFV("HTTP status code", "%ld", httpResultCode));
     }
 
     LSErrorInit(&lserror);
-    std::string key = ConvertToString<long>(task->ticket).c_str();                  //Prevent CoW  (DEBUGGING)
+    std::string key = ConvertToString<long>(task->m_ticket).c_str();                  //Prevent CoW  (DEBUGGING)
 
     std::string payload;
 
@@ -1722,10 +1721,10 @@ void DownloadManager::completed_dl(DownloadTask* task)
     std::string dest;
     if (interrupted) {
         //still has the temp name
-        dest.append(task->destPath + task->downloadPrefix + task->destFile);
+        dest.append(task->m_destPath + task->m_downloadPrefix + task->m_destFile);
     } else {
         //has the regular name
-        dest.append(task->destPath + task->destFile);
+        dest.append(task->m_destPath + task->m_destFile);
     }
     payloadJsonObj.put("interrupted", interrupted);
     payloadJsonObj.put("completed", !(interrupted));
@@ -1737,11 +1736,11 @@ void DownloadManager::completed_dl(DownloadTask* task)
     std::string historyString = JUtil::toSimpleString(payloadJsonObj);
     //add to database record
     if (interrupted)
-        m_pDlDb->addHistory(task->ticket, task->ownerId, task->connectionName, "interrupted", historyString);
+        m_pDlDb->addHistory(task->m_ticket, task->m_ownerId, task->m_connectionName, "interrupted", historyString);
     else
-        m_pDlDb->addHistory(task->ticket, task->ownerId, task->connectionName, "completed", historyString);
+        m_pDlDb->addHistory(task->m_ticket, task->m_ownerId, task->m_connectionName, "completed", historyString);
 
-    if (!postDownloadUpdate(task->ownerId, task->ticket, payload)) {
+    if (!postDownloadUpdate(task->m_ownerId, task->m_ticket, payload)) {
         LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_COMPLETION, 2,
                           PMLOGKS("ticket", key.c_str()),
                           PMLOGKS("detail", payload.c_str()),
@@ -1750,19 +1749,19 @@ void DownloadManager::completed_dl(DownloadTask* task)
         LOG_DEBUG("[download complete] sent [%s] to subscriptions for ticket [%s]", payload.c_str(), key.c_str());
     }
 
-    if (!m_queue.empty() && m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (!m_queue.empty() && m_activeTaskCount < DownloadSettings::Settings()->m_maxDownloadManagerConcurrent) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long, DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
         if (iter != m_ticketMap.end()) {
             DownloadTask* nextDownload = iter->second;
-            nextDownload->queued = false;
+            nextDownload->m_isQueued = false;
             m_activeTaskCount++;
             requestWakeLock(true);
-            glibcurl_add(nextDownload->curlDesc.getHandle());
+            glibcurl_add(nextDownload->m_curlDesc.getHandle());
             //LOG_DEBUG ("%s: un-Q-ing a task, starting download of ticket [%lu] for url [%s]\n", __PRETTY_FUNCTION__,
             //      nextDownload->ticket, nextDownload->url.c_str());
-            m_pDlDb->addHistory(nextDownload->ticket, nextDownload->ownerId, task->connectionName, "running", nextDownload->toJSONString());
+            m_pDlDb->addHistory(nextDownload->m_ticket, nextDownload->m_ownerId, task->m_connectionName, "running", nextDownload->toJSONString());
         }
     } else if (m_queue.empty() && m_activeTaskCount == 0) {
         g_idle_add(DownloadManager::cbIdleSourceGlibcurlCleanup, this);
@@ -1812,59 +1811,59 @@ bool DownloadManager::cancel(unsigned long ticket)
 
     _task->m_remove = true;
 
-    if (_task->type == TransferTask::UPLOAD_TASK) {
+    if (_task->m_type == TransferTask::UPLOAD_TASK) {
         //TODO: when The Great Rewrite comes, make me more OOP-ly
-        UploadTask * task = _task->p_uploadTask;
+        UploadTask * task = _task->m_uploadTask;
         postUploadStatus(task);
         delete _task;
         return true;
     }
 
-    DownloadTask * task = _task->p_downloadTask;
+    DownloadTask * task = _task->m_downloadTask;
     //LOG_DEBUG ("canceling download [%lu] of [%s]", task->ticket, task->url.c_str());
-    LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_CANCEL, 2, PMLOGKFV("ticket", "%lu", task->ticket), PMLOGKS("url", task->url.c_str()));
+    LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_CANCEL, 2, PMLOGKFV("ticket", "%lu", task->m_ticket), PMLOGKS("url", task->m_url.c_str()));
 
     //alert any subscribers that this task was aborted
     LSError lserror;
     LSErrorInit(&lserror);
     //bool LSSubscriptionReply(LSHandle *sh, const char *key,const char *payload, LSError *lserror);
-    std::string key = ConvertToString<long>(task->ticket).c_str();                  //Prevent CoW  (DEBUGGING)
+    std::string key = ConvertToString<long>(task->m_ticket).c_str();                  //Prevent CoW  (DEBUGGING)
 
     pbnjson::JValue jsonPayloadObj = task->toJSON();
     std::string historyString = JUtil::toSimpleString(jsonPayloadObj);
-    jsonPayloadObj.put("target", (task->destPath + task->downloadPrefix + task->destFile));
+    jsonPayloadObj.put("target", (task->m_destPath + task->m_downloadPrefix + task->m_destFile));
     jsonPayloadObj.put("completionStatusCode", DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED);
     jsonPayloadObj.put("aborted", true);
     jsonPayloadObj.put("completed", false);
     jsonPayloadObj.put("interrupted", false);
 
     std::string payload = JUtil::toSimpleString(jsonPayloadObj);
-    if (!postDownloadUpdate(task->ownerId, task->ticket, payload)) {
+    if (!postDownloadUpdate(task->m_ownerId, task->m_ticket, payload)) {
         LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_CANCEL, 2, PMLOGKS("ticket", key.c_str()), PMLOGKS("detail", payload.c_str()), "failed to update cancellation status to subscribers");
         return false;
     }
 
     // remove file if the download has been cancelled.
     //LOG_DEBUG ("unlinking file %s", std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
-    unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
+    unlink(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str());
 
     //add to database recordis1xConnection
-    m_pDlDb->addHistory(task->ticket, task->ownerId, task->connectionName, "cancelled", historyString);
+    m_pDlDb->addHistory(task->m_ticket, task->m_ownerId, task->m_connectionName, "cancelled", historyString);
 
     //get rid of the task object (it was already removed from the maps at the start of cancel() )
     delete _task;
 
     // if an active task has been cancelled, the next download should start
-    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent)) {
+    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->m_maxDownloadManagerConcurrent)) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long, DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
         if (iter != m_ticketMap.end()) {
             DownloadTask* nextDownload = iter->second;
-            nextDownload->queued = false;
+            nextDownload->m_isQueued = false;
             m_activeTaskCount++;
             requestWakeLock(true);
-            glibcurl_add(nextDownload->curlDesc.getHandle());
+            glibcurl_add(nextDownload->m_curlDesc.getHandle());
             //LOG_DEBUG ("%s: starting download of ticket [%lu] for url [%s]\n", __PRETTY_FUNCTION__,
             //      nextDownload->ticket, nextDownload->url.c_str());
         }
@@ -1969,10 +1968,10 @@ int DownloadManager::getJSONListOfAllDownloads(std::vector<std::string>& downloa
         //TODO: maybe a harsher response for debugging purposes; error of this type can't really be handled here
         //- but if it happens, root cause should be found and fixed
         pbnjson::JValue jobj = task->toJSON();
-        jobj.put("lastUpdateAt", (int64_t) task->lastUpdateAt);
-        jobj.put("queued", task->queued);
-        jobj.put("owner", task->ownerId);
-        jobj.put("connectionName", task->connectionName);
+        jobj.put("lastUpdateAt", (int64_t) task->m_lastUpdateAt);
+        jobj.put("queued", task->m_isQueued);
+        jobj.put("owner", task->m_ownerId);
+        jobj.put("connectionName", task->m_connectionName);
         downloadList.push_back(JUtil::toSimpleString(jobj));
         iter++;
         ++i;
@@ -2021,10 +2020,10 @@ bool DownloadManager::spaceCheckOnFs(const std::string& path, uint64_t threshold
         return false;
     }
 
-    if (DownloadSettings::Settings()->dbg_useStatfsFake) {
-        fs_stats.f_bfree = DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
+    if (DownloadSettings::Settings()->m_dbg_useStatfsFake) {
+        fs_stats.f_bfree = DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
         LOG_DEBUG("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                  __FUNCTION__, DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes,
+                  __FUNCTION__, DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes,
                   fs_stats.f_bfree);
     }
 
@@ -2047,10 +2046,10 @@ bool DownloadManager::spaceOnFs(const std::string& path, uint64_t& spaceFreeKB, 
         return false;
     }
 
-    if (DownloadSettings::Settings()->dbg_useStatfsFake) {
-        fs_stats.f_bfree = DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
+    if (DownloadSettings::Settings()->m_dbg_useStatfsFake) {
+        fs_stats.f_bfree = DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
         LOG_DEBUG("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                  __FUNCTION__, DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes,
+                  __FUNCTION__, DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes,
                   fs_stats.f_bfree);
     }
 
@@ -2087,34 +2086,34 @@ TransferTask * DownloadManager::removeTask_dl(uint32_t ticket)
         return NULL;
     }
 
-    TransferTask * _task = getTask(task->curlDesc.getHandle());
+    TransferTask * _task = getTask(task->m_curlDesc.getHandle());
 
     //remove it from the curl descriptor map
-    m_handleMap.erase(task->curlDesc);
+    m_handleMap.erase(task->m_curlDesc);
 
     //and also remove it from the ticket map
-    m_ticketMap.erase(task->ticket);
+    m_ticketMap.erase(task->m_ticket);
 
-    if (!task->queued) {
+    if (!task->m_isQueued) {
         //remove from glibcurl's inprogress handle pool
-        glibcurl_remove(task->curlDesc.getHandle());
+        glibcurl_remove(task->m_curlDesc.getHandle());
         // only decrement the active task count if this was in fact downloading
         m_activeTaskCount--;
     } else {
-        m_queue.remove(task->ticket);
+        m_queue.remove(task->m_ticket);
     }
 
     //if the curl handle had a header list associated w/ it, free it
     struct curl_slist * headerList;
-    if ((headerList = task->curlDesc.getHeaderList()) != NULL) {
+    if ((headerList = task->m_curlDesc.getHeaderList()) != NULL) {
         curl_slist_free_all(headerList);
     }
 
     //clean it curl-wise
-    curl_easy_cleanup(task->curlDesc.getHandle());
+    curl_easy_cleanup(task->m_curlDesc.getHandle());
 
     //now that it is no longer valid, mark it null
-    task->curlDesc.setHandle(NULL);
+    task->m_curlDesc.setHandle(NULL);
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
     return _task;
@@ -2133,10 +2132,10 @@ TransferTask * DownloadManager::removeTask(CURL * handle)
     }
 
     //this is a bit wasteful but prevents from having to maintain 2 copies of essentially identical code
-    if (task->type == TransferTask::DOWNLOAD_TASK)
-        removeTask_dl(task->p_downloadTask->ticket);
-    else if (task->type == TransferTask::UPLOAD_TASK)
-        removeTask_ul(task->p_uploadTask->id());
+    if (task->m_type == TransferTask::DOWNLOAD_TASK)
+        removeTask_dl(task->m_downloadTask->m_ticket);
+    else if (task->m_type == TransferTask::UPLOAD_TASK)
+        removeTask_ul(task->m_uploadTask->id());
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
     return task;
@@ -2199,14 +2198,14 @@ bool DownloadManager::getDownloadTaskCopy(unsigned long ticket, DownloadTask& ta
         return false;
     }
 
-    task.curlDesc = ptrFoundTask->curlDesc;
-    task.bytesCompleted = ptrFoundTask->bytesCompleted;
-    task.bytesTotal = ptrFoundTask->bytesTotal;
-    task.destPath = ptrFoundTask->destPath.c_str();                 //Prevent CoW  (DEBUGGING)
-    task.destFile = ptrFoundTask->destFile.c_str();                 //Prevent CoW  (DEBUGGING)
-    task.ticket = ptrFoundTask->ticket;
-    task.url = ptrFoundTask->url.c_str();                   //Prevent CoW  (DEBUGGING)
-    task.setMimeType(ptrFoundTask->detectedMIMEType);   //Prevent CoW  (DEBUGGING)
+    task.m_curlDesc = ptrFoundTask->m_curlDesc;
+    task.m_bytesCompleted = ptrFoundTask->m_bytesCompleted;
+    task.m_bytesTotal = ptrFoundTask->m_bytesTotal;
+    task.m_destPath = ptrFoundTask->m_destPath.c_str();                 //Prevent CoW  (DEBUGGING)
+    task.m_destFile = ptrFoundTask->m_destFile.c_str();                 //Prevent CoW  (DEBUGGING)
+    task.m_ticket = ptrFoundTask->m_ticket;
+    task.m_url = ptrFoundTask->m_url.c_str();                   //Prevent CoW  (DEBUGGING)
+    task.setMimeType(ptrFoundTask->m_detectedMIMEType);   //Prevent CoW  (DEBUGGING)
 
     return true;
 }
@@ -2742,7 +2741,7 @@ bool DownloadManager::diskSpaceAtStopMarkLevel()
     if (!DownloadManager::spaceOnFs("/media/internal", freeSpaceKB, totalSpaceKB))
         return true;
 
-    if (freeSpaceKB <= DownloadSettings::Settings()->freespaceStopmarkRemainingKBytes)
+    if (freeSpaceKB <= DownloadSettings::Settings()->m_freespaceStopmarkRemainingKBytes)
         return true;
 
     return false;

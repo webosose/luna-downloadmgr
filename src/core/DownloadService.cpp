@@ -331,7 +331,7 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
 
 Done:
     if (success) {
-        std::string payload = std::string("\"ticket\":") + key + std::string(" , \"url\":\"") + task.url + std::string("\"") + std::string(" , \"target\":\"") + task.destPath + task.destFile
+        std::string payload = std::string("\"ticket\":") + key + std::string(" , \"url\":\"") + task.m_url + std::string("\"") + std::string(" , \"target\":\"") + task.m_destPath + task.m_destFile
                 + std::string("\"");
 
         result = std::string("{\"returnValue\":true , ") + payload;
@@ -990,14 +990,14 @@ void DownloadManager::filesystemStatusCheck(const uint64_t& freeSpaceKB, const u
     pctFull = (pctFull <= 100 ? pctFull : 100);
     LOG_DEBUG("%s: Percent Full = %u (from free space KB = %llu , total space KB = %llu", __FUNCTION__, pctFull, freeSpaceKB, totalSpaceKB);
 
-    if (pctFull < DownloadSettings::Settings()->freespaceLowmarkFullPercent)
+    if (pctFull < DownloadSettings::Settings()->m_freespaceLowmarkFullPercent)
         return;
 
     bool critical = false;
     bool stopMark = false;
-    if (freeSpaceKB <= DownloadSettings::Settings()->freespaceStopmarkRemainingKBytes)
+    if (freeSpaceKB <= DownloadSettings::Settings()->m_freespaceStopmarkRemainingKBytes)
         stopMark = true;
-    else if (pctFull >= DownloadSettings::Settings()->freespaceCriticalmarkFullPercent)
+    else if (pctFull >= DownloadSettings::Settings()->m_freespaceCriticalmarkFullPercent)
         critical = true;
 
     if (criticalAlertRaised)
@@ -1117,14 +1117,14 @@ Done:
     std::string lbuff;
     responseRoot.put("ticket", (int64_t) ticket_id);
     if (fromTicketMap) {
-        responseRoot.put("url", task.url);
+        responseRoot.put("url", task.m_url);
 
-        lbuff = Utils::toString(task.bytesCompleted);
-        responseRoot.put("amountReceived", (int32_t) (task.bytesCompleted));
+        lbuff = Utils::toString(task.m_bytesCompleted);
+        responseRoot.put("amountReceived", (int32_t) (task.m_bytesCompleted));
         responseRoot.put("e_amountReceived", lbuff);
 
-        lbuff = Utils::toString(task.bytesTotal);
-        responseRoot.put("amountTotal", (int32_t) (task.bytesTotal));
+        lbuff = Utils::toString(task.m_bytesTotal);
+        responseRoot.put("amountTotal", (int32_t) (task.m_bytesTotal));
         responseRoot.put("e_amountTotal", lbuff);
 
         if (LSMessageIsSubscription(msg)) {
@@ -1424,7 +1424,7 @@ bool DownloadManager::cbConnectionManagerServiceState(LSHandle* lshandle, LSMess
     if (root.hasKey("connected")) {
         if (root["connected"].asBool()) {
             //DEBUG: is the force novacom switch on? if yes, tell cnmgr to do it!
-            if (DownloadSettings::Settings()->dbg_forceNovacomOnAtStartup) {
+            if (DownloadSettings::Settings()->m_dbg_forceNovacomOnAtStartup) {
                 turnNovacomOn(DownloadManager::instance().m_serviceHandle);
             }
             //the connection manager is connected...make a call to receive status updates on connections
@@ -1627,8 +1627,8 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
 
     //act on changes...
 
-    bool autoResume = DownloadSettings::Settings()->autoResume;
-    bool resumeAggression = DownloadSettings::Settings()->resumeAggression;
+    bool autoResume = DownloadSettings::Settings()->m_autoResume;
+    bool resumeAggression = DownloadSettings::Settings()->m_resumeAggression;
     bool previouslyAvailable = (wifiConnectionStatusPrevious == InetConnectionConnected) || (wanConnectionStatusPrevious == InetConnectionConnected)
             || (btpanConnectionStatusPrevious == InetConnectionConnected) || (wiredConnectionStatusPrevious == InetConnectionConnected);
     bool available = (dlManager.m_wifiConnectionStatus == InetConnectionConnected)

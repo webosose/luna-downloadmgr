@@ -36,35 +36,34 @@
 
 class DownloadSettings: public Singleton<DownloadSettings> {
 public:
-
-    std::string downloadPathMedia;              //default >> /media/internal/downloads
-    std::string schemaPath;                     //default >> @WEBOS_INSTALL_WEBOS_SYSCONFDIR@/schemas/luna-downloadmgr/
-    std::string wiredInterfaceName;             //eth0
-    std::string wifiInterfaceName;              //wlan0
-    std::string wanInterfaceName;               //ppp0
-    std::string btpanInterfaceName;             //bsl0
-    bool autoResume;                     //false
-    bool resumeAggression;               //true
-    bool appCompatibilityMode;           //true
-    bool preemptiveFreeSpaceCheck;       //true
-    bool dbg_fake1xForWan;               //false.   set to true to make it look like any connected WAN status is a 1x connection (for testing low coverage/1x scenarios)
-    bool dbg_forceNovacomOnAtStartup;    //false. set to true to make the downloadmanager service flip novacom access to enabled (aka dev mode switch) to debug "full erase" scenarios where
+    std::string m_downloadPathMedia;              //default >> /media/internal/downloads
+    std::string m_schemaPath;                     //default >> @WEBOS_INSTALL_WEBOS_SYSCONFDIR@/schemas/luna-downloadmgr/
+    std::string m_wiredInterfaceName;             //eth0
+    std::string m_wifiInterfaceName;              //wlan0
+    std::string m_wanInterfaceName;               //ppp0
+    std::string m_btpanInterfaceName;             //bsl0
+    bool m_autoResume;                     //false
+    bool m_resumeAggression;               //true
+    bool m_appCompatibilityMode;           //true
+    bool m_preemptiveFreeSpaceCheck;       //true
+    bool m_dbg_fake1xForWan;               //false.   set to true to make it look like any connected WAN status is a 1x connection (for testing low coverage/1x scenarios)
+    bool m_dbg_forceNovacomOnAtStartup;    //false. set to true to make the downloadmanager service flip novacom access to enabled (aka dev mode switch) to debug "full erase" scenarios where
                                          // the erase disables it
-    bool localPackageInstallNoSafety;    //false. set to true to not check for status of a previous install of a package of the same name, when performing a local install of that package
+    bool m_localPackageInstallNoSafety;    //false. set to true to not check for status of a previous install of a package of the same name, when performing a local install of that package
                                          //  (in essence a hard override of the system to force an install to complete. Use with extreme caution. BARLEYWINE HACKATHON )
 
-    unsigned int maxDownloadManagerQueueLength;
-    int maxDownloadManagerConcurrent;
-    unsigned int maxDownloadManagerRecvSpeed;
+    unsigned int m_maxDownloadManagerQueueLength;
+    int m_maxDownloadManagerConcurrent;
+    unsigned int m_maxDownloadManagerRecvSpeed;
 
-    uint32_t freespaceLowmarkFullPercent;
-    uint32_t freespaceMedmarkFullPercent;
-    uint32_t freespaceHighmarkFullPercent;
-    uint32_t freespaceCriticalmarkFullPercent;
-    uint64_t freespaceStopmarkRemainingKBytes;
+    uint32_t m_freespaceLowmarkFullPercent;
+    uint32_t m_freespaceMedmarkFullPercent;
+    uint32_t m_freespaceHighmarkFullPercent;
+    uint32_t m_freespaceCriticalmarkFullPercent;
+    uint64_t m_freespaceStopmarkRemainingKBytes;
 
-    bool dbg_useStatfsFake;
-    uint64_t dbg_statfsFakeFreeSizeBytes;
+    bool m_dbg_useStatfsFake;
+    uint64_t m_dbg_statfsFakeFreeSizeBytes;
 
     static DownloadSettings* Settings();
 

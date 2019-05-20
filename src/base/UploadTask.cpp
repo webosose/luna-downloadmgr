@@ -18,9 +18,6 @@
 #include <core/DownloadManager.h>
 #include <stdlib.h>
 
-// 0 (zero) is an INVALID upload id...
-uint32_t UploadTask::s_genid = 1;
-
 /*
  *
  * http://wiki.developers.facebook.com/index.php/Photos.upload
@@ -49,13 +46,13 @@ UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl, const s
     for (std::vector<PostItem>::iterator it = postparts.begin(); it != postparts.end(); ++it) {
         //curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, it->first.c_str(), CURLFORM_COPYCONTENTS,it->second.c_str(), CURLFORM_END);
 
-        if ((*it)._type == PostItem::Value) {
+        if ((*it).m_type == PostItem::Value) {
             //this is a value part...  use CURLFORM_COPYCONTENTS
-            curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it)._key.c_str(), CURLFORM_CONTENTTYPE, (*it)._contentType.c_str(), CURLFORM_COPYCONTENTS, (*it)._data.c_str(),
+            curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it).m_key.c_str(), CURLFORM_CONTENTTYPE, (*it).m_contentType.c_str(), CURLFORM_COPYCONTENTS, (*it).m_data.c_str(),
                     CURLFORM_END);
-        } else if ((*it)._type == PostItem::File) {
+        } else if ((*it).m_type == PostItem::File) {
             //this is a file part... use CURLFORM_FILE
-            curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it)._key.c_str(), CURLFORM_CONTENTTYPE, (*it)._contentType.c_str(), CURLFORM_FILE, (*it)._data.c_str(), CURLFORM_END);
+            curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it).m_key.c_str(), CURLFORM_CONTENTTYPE, (*it).m_contentType.c_str(), CURLFORM_FILE, (*it).m_data.c_str(), CURLFORM_END);
         }
     }
 
