@@ -122,8 +122,6 @@ DownloadManager::~DownloadManager()
 
 bool DownloadManager::init()
 {
-
-#if !defined(TARGET_DESKTOP)
     if (DownloadSettings::Settings()->m_downloadPathMedia.size()) {
         m_downloadPath = DownloadSettings::Settings()->m_downloadPathMedia;
     } else {
@@ -131,11 +129,6 @@ bool DownloadManager::init()
         DownloadSettings::Settings()->m_downloadPathMedia = "/media/internal/downloads/";
     }
     m_userDiskRootPath = "/media/internal/";
-#else
-    m_downloadPath = std::string(getenv("HOME"))+std::string("/downloads/");
-    m_userDiskRootPath = std::string(getenv("HOME"))+std::string("/downloads/");
-#endif
-
     unsigned long maxKey = 0;
     m_pDlDb->getMaxKey(maxKey);
 
@@ -166,10 +159,10 @@ bool DownloadManager::init()
 
     return true;
 }
+
 // DownloadManager::isValidOverridePath
 // Will check is the specified path is valid, and if necessary, create it
 // Valid paths are currently considered as anything underneath m_downloadPath
-
 bool DownloadManager::isValidOverridePath(const std::string& path)
 {
 
@@ -206,11 +199,7 @@ bool DownloadManager::isPathInMedia(const std::string& path)
         return false;
 
     //the prefix /media/internal has to be anchored at 0
-#if !defined (TARGET_DESKTOP)
     if (path.find("/media/internal") == 0)
-#else
-        if (path.find (getenv("HOME")) == 0)
-#endif
         return true;
 
     return false;
@@ -240,9 +229,23 @@ bool DownloadManager::isPathInVar(const std::string& path)
 }
 
 // download: function to start a download
-int DownloadManager::download(const std::string& caller, const std::string& uri, const std::string& mime, const std::string& overrideTargetDir, const std::string& overrideTargetFile,
-        const unsigned long ticket, bool keepOriginalFilenameOnRedirect, const std::string& authToken, const std::string& deviceId, Connection interface, bool canHandlePause, bool autoResume,
-        bool appendTargetFile, const std::string& cookieHeader, const std::pair<uint64_t, uint64_t> range, const int remainingRedCounts)
+int DownloadManager::download(
+        const std::string& caller,
+        const std::string& uri,
+        const std::string& mime,
+        const std::string& overrideTargetDir,
+        const std::string& overrideTargetFile,
+        const unsigned long ticket,
+        bool keepOriginalFilenameOnRedirect,
+        const std::string& authToken,
+        const std::string& deviceId,
+        Connection interface,
+        bool canHandlePause,
+        bool autoResume,
+        bool appendTargetFile,
+        const std::string& cookieHeader,
+        const std::pair<uint64_t, uint64_t> range,
+        const int remainingRedCounts)
 {
     LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_START, 8,
                         PMLOGKS("Caller", caller.c_str()),
@@ -261,13 +264,13 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
 
     if (interface == ANY) {
         //determine a good interface to use
-        if (m_wiredConnectionStatus == DownloadManager::InetConnectionConnected)
+        if (m_wiredConnectionStatus == InetConnectionConnected)
             interface = Wired;
-        else if (m_wifiConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_wifiConnectionStatus == InetConnectionConnected)
             interface = Wifi;
-        else if (m_wanConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_wanConnectionStatus == InetConnectionConnected)
             interface = Wan;
-        else if (m_btpanConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_btpanConnectionStatus == InetConnectionConnected)
             interface = Btpan;
 
         //else leave as any
@@ -596,7 +599,7 @@ int DownloadManager::download(const std::string& caller, const std::string& uri,
 
 int DownloadManager::resumeDownload(const unsigned long ticket, const std::string& authToken, const std::string& deviceId, std::string& r_err)
 {
-    DownloadHistoryDb::DownloadHistory history;
+    DownloadHistory history;
 
     //retrieve the ticket from the history
     if (getDownloadHistory(ticket, history) == 0) {
@@ -615,7 +618,7 @@ int DownloadManager::resumeDownload(const unsigned long ticket, const std::strin
     return rc;
 }
 
-int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& history, bool autoResume, std::string& r_err)
+int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoResume, std::string& r_err)
 {
     LOG_DEBUG(" resumeDownload - history json string is [%s]", history.m_downloadRecordJsonString.c_str());
     int rc = resumeDownload(history, autoResume, std::string(), std::string(), r_err);
@@ -623,7 +626,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     return rc;
 }
 
-int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& history, bool autoResume, const std::string& authToken, const std::string& deviceId, std::string& r_err)
+int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoResume, const std::string& authToken, const std::string& deviceId, std::string& r_err)
 {
     //parse the history json string
     pbnjson::JValue root = JUtil::parse(history.m_downloadRecordJsonString.c_str(), std::string(""));
@@ -828,13 +831,13 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     } else {
         LOG_WARNING_PAIRS_ONLY(LOGID_INTERFACE_FAIL_ON_RESUME, 1, PMLOGKS("interface name", history.m_interface.c_str()));
         //determine a good interface to use
-        if (m_wiredConnectionStatus == DownloadManager::InetConnectionConnected)
+        if (m_wiredConnectionStatus == InetConnectionConnected)
             p_dlTask->m_connectionName = connectionId2Name(Wired);
-        else if (m_wifiConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_wifiConnectionStatus == InetConnectionConnected)
             p_dlTask->m_connectionName = connectionId2Name(Wifi);
-        else if (m_wanConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_wanConnectionStatus == InetConnectionConnected)
             p_dlTask->m_connectionName = connectionId2Name(Wan);
-        else if (m_btpanConnectionStatus == DownloadManager::InetConnectionConnected)
+        else if (m_btpanConnectionStatus == InetConnectionConnected)
             p_dlTask->m_connectionName = connectionId2Name(Btpan);
     }
 
@@ -954,7 +957,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
 int DownloadManager::resumeAll()
 {
     //go through all interrupted downloads from the db and resume each
-    std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
+    std::vector<DownloadHistory> interrupteds;
     std::string err;
     int rc = 0;
 
@@ -963,7 +966,7 @@ int DownloadManager::resumeAll()
     LOG_DEBUG("%s: [RESUME]", __FUNCTION__);
 
     m_pDlDb->getDownloadHistoryRecordsForState("interrupted", interrupteds);
-    for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
+    for (std::vector<DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
         resumeDownload(*it, false, err);
         ++rc;
@@ -972,10 +975,10 @@ int DownloadManager::resumeAll()
     return rc;
 }
 
-int DownloadManager::resumeAllForInterface(Connection interface, bool autoResume)
+int DownloadManager::resumeAll(Connection interface, bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
-    std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
+    std::vector<DownloadHistory> interrupteds;
     std::string err;
     int rc = 0;
 
@@ -985,7 +988,7 @@ int DownloadManager::resumeAllForInterface(Connection interface, bool autoResume
     std::string ifaceName = DownloadManager::connectionId2Name(interface);
     LOG_DEBUG("Resume Download Interfaces : Interfaces - %s", ifaceName.c_str());
     m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted", ifaceName, interrupteds);
-    for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
+    for (std::vector<DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
         resumeDownload(*it, autoResume, err);
         ++rc;
@@ -994,7 +997,7 @@ int DownloadManager::resumeAllForInterface(Connection interface, bool autoResume
     return rc;
 }
 
-int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistoryDb::DownloadHistory& history, Connection newInterface, bool autoResume)
+int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistory& history, Connection newInterface, bool autoResume)
 {
     std::string err;
     history.m_interface = DownloadManager::connectionId2Name(newInterface);
@@ -1004,7 +1007,7 @@ int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistoryDb::Downl
 int DownloadManager::resumeMultipleOnAlternateInterface(Connection oldInterface, Connection newInterface, bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
-    std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
+    std::vector<DownloadHistory> interrupteds;
     std::string err;
     int rc = 0;
 
@@ -1013,7 +1016,7 @@ int DownloadManager::resumeMultipleOnAlternateInterface(Connection oldInterface,
 
     std::string ifaceName = DownloadManager::connectionId2Name(oldInterface);
     m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted", ifaceName, interrupteds);
-    for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
+    for (std::vector<DownloadHistory>::iterator it = interrupteds.begin(); it != interrupteds.end(); ++it) {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
         resumeDownloadOnAlternateInterface(*it, newInterface, autoResume);
         ++rc;
@@ -1110,7 +1113,7 @@ int DownloadManager::pauseAll()
     return 1;
 }
 
-int DownloadManager::pauseAllForInterface(Connection interface)
+int DownloadManager::pauseAll(Connection interface)
 {
     //run through the whole ticket map and call pause download on all that match the connection specified...flag pause() so that it doesn't start queued downloads
     //Can't do this directly because the pause() fn modifies the map I'm iterating on. Do it via intermediate list
@@ -1245,7 +1248,7 @@ size_t DownloadManager::cbHeader(CURL * taskHandle, size_t headerSize, const cha
 
     //PAST THIS POINT, IT MUST BE A DOWNLOAD TASK
 
-    if (_task->m_type != TransferTask::DOWNLOAD_TASK) {
+    if (_task->m_type != DOWNLOAD_TASK) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return headerSize;
     }
@@ -1343,7 +1346,7 @@ size_t DownloadManager::cbGlib()
             if (_task == NULL)
                 goto Return_cbGlib;
 
-            if (_task->m_type == TransferTask::DOWNLOAD_TASK) {
+            if (_task->m_type == DOWNLOAD_TASK) {
 
                 //complete this transfer..remove the task...
                 dl_task = _task->m_downloadTask;
@@ -1352,7 +1355,7 @@ size_t DownloadManager::cbGlib()
                     dl_task->m_curlDesc.setHttpResultCode(l_httpCode);
                     dl_task->m_curlDesc.setHttpConnectCode(l_httpConnectCode);
                 }
-            } else if (_task->m_type == TransferTask::UPLOAD_TASK) {
+            } else if (_task->m_type == UPLOAD_TASK) {
                 ul_task = _task->m_uploadTask;
                 if (ul_task != NULL) {
                     ul_task->setCURLCode(resultCode);
@@ -1391,7 +1394,7 @@ size_t DownloadManager::cbWriteEvent(CURL * taskHandle, size_t payloadSize, unsi
         return 0;
     }
 
-    if ((_task->m_type != TransferTask::DOWNLOAD_TASK)) {
+    if ((_task->m_type != DOWNLOAD_TASK)) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
@@ -1463,7 +1466,7 @@ size_t DownloadManager::cbReadEvent(CURL* taskHandle, size_t payloadSize, unsign
         return 0;
     }
 
-    if (_task->m_type != TransferTask::DOWNLOAD_TASK) {
+    if (_task->m_type != DOWNLOAD_TASK) {
 //      LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
@@ -1553,9 +1556,9 @@ void DownloadManager::completed(TransferTask * task)
         return;
     }
 
-    if (task->m_type == TransferTask::DOWNLOAD_TASK)
+    if (task->m_type == DOWNLOAD_TASK)
         completed_dl(task->m_downloadTask);
-    if (task->m_type == TransferTask::UPLOAD_TASK)
+    if (task->m_type == UPLOAD_TASK)
         completed_ul(task->m_uploadTask);
 
     delete task;
@@ -1802,7 +1805,7 @@ bool DownloadManager::cancel(unsigned long ticket)
     TransferTask * _task = removeTask(ticket);
 
     if (_task == NULL) {
-        DownloadHistoryDb::DownloadHistory history;
+        DownloadHistory history;
         if (m_pDlDb->getDownloadHistoryRecord(ticket, history)) {
             cancelFromHistory(history);
         }
@@ -1811,7 +1814,7 @@ bool DownloadManager::cancel(unsigned long ticket)
 
     _task->m_remove = true;
 
-    if (_task->m_type == TransferTask::UPLOAD_TASK) {
+    if (_task->m_type == UPLOAD_TASK) {
         //TODO: when The Great Rewrite comes, make me more OOP-ly
         UploadTask * task = _task->m_uploadTask;
         postUploadStatus(task);
@@ -1871,7 +1874,7 @@ bool DownloadManager::cancel(unsigned long ticket)
     return true;
 }
 
-void DownloadManager::cancelFromHistory(DownloadHistoryDb::DownloadHistory& history)
+void DownloadManager::cancelFromHistory(DownloadHistory& history)
 {
     //LOG_DEBUG ("%s: canceling download ticket [%lu]",__PRETTY_FUNCTION__, history.m_ticket);
 
@@ -2132,9 +2135,9 @@ TransferTask * DownloadManager::removeTask(CURL * handle)
     }
 
     //this is a bit wasteful but prevents from having to maintain 2 copies of essentially identical code
-    if (task->m_type == TransferTask::DOWNLOAD_TASK)
+    if (task->m_type == DOWNLOAD_TASK)
         removeTask_dl(task->m_downloadTask->m_ticket);
-    else if (task->m_type == TransferTask::UPLOAD_TASK)
+    else if (task->m_type == UPLOAD_TASK)
         removeTask_ul(task->m_uploadTask->id());
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
@@ -2220,7 +2223,7 @@ bool DownloadManager::getDownloadHistory(unsigned long ticket, std::string& r_ca
 
 }
 
-bool DownloadManager::getDownloadHistory(unsigned long ticket, DownloadHistoryDb::DownloadHistory& r_history)
+bool DownloadManager::getDownloadHistory(unsigned long ticket, DownloadHistory& r_history)
 {
     if (!m_pDlDb)
         return false;
@@ -2228,7 +2231,7 @@ bool DownloadManager::getDownloadHistory(unsigned long ticket, DownloadHistoryDb
     return (m_pDlDb->getDownloadHistoryRecord(ticket, r_history) > 0);
 }
 
-bool DownloadManager::getDownloadHistoryAllByCaller(const std::string& ownerCaller, std::vector<DownloadHistoryDb::DownloadHistory>& r_histories)
+bool DownloadManager::getDownloadHistoryAllByCaller(const std::string& ownerCaller, std::vector<DownloadHistory>& r_histories)
 {
     if (!m_pDlDb)
         return false;
@@ -2258,30 +2261,30 @@ int DownloadManager::clearDownloadHistoryByGlobbedOwner(const std::string& calle
 }
 
 //static
-DownloadManager::Connection DownloadManager::connectionName2Id(const std::string& name)
+Connection DownloadManager::connectionName2Id(const std::string& name)
 {
     if (name == "wired")
-        return DownloadManager::Wired;
+        return Wired;
     else if (name == "wifi")
-        return DownloadManager::Wifi;
+        return Wifi;
     else if (name == "wan")
-        return DownloadManager::Wan;
+        return Wan;
     else if (name == "btpan")
-        return DownloadManager::Btpan;
+        return Btpan;
 
-    return DownloadManager::ANY;
+    return ANY;
 }
 
 //static
-std::string DownloadManager::connectionId2Name(const DownloadManager::Connection id)
+std::string DownloadManager::connectionId2Name(const Connection id)
 {
-    if (id == DownloadManager::Wired)
+    if (id == Wired)
         return "wired";
-    if (id == DownloadManager::Wifi)
+    if (id == Wifi)
         return "wifi";
-    else if (id == DownloadManager::Wan)
+    else if (id == Wan)
         return "wan";
-    else if (id == DownloadManager::Btpan)
+    else if (id == Btpan)
         return "btpan";
 
     return "*";
@@ -2296,7 +2299,7 @@ bool DownloadManager::is1xConnection(const std::string& networkType)
     return false;
 }
 
-bool DownloadManager::isInterfaceUp(DownloadManager::Connection connectionId)
+bool DownloadManager::isInterfaceUp(Connection connectionId)
 {
     ConnectionStatus status;
     switch (connectionId) {
@@ -2308,7 +2311,7 @@ bool DownloadManager::isInterfaceUp(DownloadManager::Connection connectionId)
         break;
     case Wan:
         if (m_wanConnectionStatus == InetConnectionConnected) {
-            if (!s_allow1x && (m_wanConnectionType == DownloadManager::WanConnection1x))
+            if (!s_allow1x && (m_wanConnectionType == WanConnection1x))
                 status = InetConnectionDisconnected;
             else
                 status = InetConnectionConnected;
@@ -2321,7 +2324,7 @@ bool DownloadManager::isInterfaceUp(DownloadManager::Connection connectionId)
     case ANY:
         return ((m_wifiConnectionStatus == InetConnectionConnected) ||
                ((m_wanConnectionStatus == InetConnectionConnected) &&
-               ((s_allow1x) || (m_wanConnectionType != DownloadManager::WanConnection1x))) ||
+               ((s_allow1x) || (m_wanConnectionType != WanConnection1x))) ||
                (m_btpanConnectionStatus == InetConnectionConnected) ||
                (m_wiredConnectionStatus == InetConnectionConnected));
     default:
@@ -2338,7 +2341,7 @@ unsigned int DownloadManager::howManyTasksActive()
 
 int DownloadManager::howManyTasksInterrupted()
 {
-    std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
+    std::vector<DownloadHistory> interrupteds;
 
     return m_pDlDb->getDownloadHistoryRecordsForState("interrupted", interrupteds);
 }

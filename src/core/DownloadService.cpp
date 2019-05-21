@@ -45,7 +45,6 @@
 
 bool DownloadManager::s_allow1x = false;                //a lunabus fn can set this to true to allow 1x connections
 
-static bool cbAllow1x(LSHandle* lshandle, LSMessage *message, void *user_data);
 static void turnNovacomOn(LSHandle * lshandle);
 
 ///////// --------------------------------------------------------------------------- LUNA BUS FUNCTIONS ----------------------------------------
@@ -64,7 +63,7 @@ static LSMethod s_methods[] = {
     { "clearHistory", DownloadManager::cbClearDownloadHistory },
     { "upload", DownloadManager::cbUpload },
     { "is1xMode", DownloadManager::cbConnectionType },
-    { "allow1x", cbAllow1x },
+    { "allow1x", DownloadManager::cbAllow1x },
     { 0, 0 },
 };
 
@@ -211,7 +210,7 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
     std::string overrideTargetFile = "";
     std::string interfaceName = "";
     std::string strInt = "";
-    DownloadManager::Connection conn;
+    Connection conn;
     bool shouldKeepOriginalFilename = false;
     bool canHandlePause = false;
     bool autoResume = true;
@@ -745,7 +744,7 @@ bool DownloadManager::cbGetAllHistory(LSHandle * lshandle, LSMessage *msg, void 
     LSError lserror;
     std::string historyCaller;
     std::string errorText;
-    std::vector<DownloadHistoryDb::DownloadHistory> historyList;
+    std::vector<DownloadHistory> historyList;
     LSErrorInit(&lserror);
     bool retVal = false;
     JUtil::Error error;
@@ -769,7 +768,7 @@ Done:
         //go through every result returned
         pbnjson::JValue resultArray = pbnjson::Array();
 
-        for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = historyList.begin(); it != historyList.end(); ++it) {
+        for (std::vector<DownloadHistory>::iterator it = historyList.begin(); it != historyList.end(); ++it) {
             pbnjson::JValue item = pbnjson::Object();
             item.put("interface", it->m_interface);
             item.put("ticket", (int64_t) it->m_ticket);
@@ -1349,7 +1348,7 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
                 }
             }
 
-            postHeaders.push_back(PostItem(key, data, PostItem::Value, contentType));
+            postHeaders.push_back(PostItem(key, data, Value, contentType));
         }
     }
 
@@ -1652,28 +1651,28 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
         altInterface = Btpan;
 
     if (wiredWentDown) {
-        dlManager.pauseAllForInterface(DownloadManager::Wired);
+        dlManager.pauseAll(Wired);
     } else if (wiredWentUp && autoResume) {
-        dlManager.resumeAllForInterface(Wired, true);
-        dlManager.resumeAllForInterface(ANY, true);
+        dlManager.resumeAll(Wired, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (wifiWentDown) {
-        dlManager.pauseAllForInterface(DownloadManager::Wifi);
+        dlManager.pauseAll(Wifi);
     } else if (wifiWentUp && autoResume) {
-        dlManager.resumeAllForInterface(Wifi, true);
-        dlManager.resumeAllForInterface(ANY, true);
+        dlManager.resumeAll(Wifi, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (wanWentDown) {
-        dlManager.pauseAllForInterface(DownloadManager::Wan);
+        dlManager.pauseAll(Wan);
     } else if (wanWentUp && autoResume && (s_allow1x || !(dlManager.m_wanConnectionType == WanConnection1x))) {
-        dlManager.resumeAllForInterface(Wan, true);
-        dlManager.resumeAllForInterface(ANY, true);
+        dlManager.resumeAll(Wan, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (btpanWentDown) {
-        dlManager.pauseAllForInterface(DownloadManager::Btpan);
+        dlManager.pauseAll(Btpan);
     } else if (btpanWentUp && autoResume) {
-        dlManager.resumeAllForInterface(Btpan, true);
-        dlManager.resumeAllForInterface(ANY, true);
+        dlManager.resumeAll(Btpan, true);
+        dlManager.resumeAll(ANY, true);
     }
 
     if (autoResume && available && resumeAggression) {
@@ -1683,8 +1682,8 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
         if (dlManager.m_wifiConnectionStatus == InetConnectionDisconnected) {
             dlManager.resumeMultipleOnAlternateInterface(Wifi, altInterface, true);
         }
-        if ((dlManager.m_wanConnectionStatus == InetConnectionDisconnected)
-                || ((dlManager.m_wanConnectionStatus == InetConnectionConnected) && !s_allow1x && (dlManager.m_wanConnectionType == WanConnection1x))) {
+        if ((dlManager.m_wanConnectionStatus == InetConnectionDisconnected) ||
+            ((dlManager.m_wanConnectionStatus == InetConnectionConnected) && !s_allow1x && (dlManager.m_wanConnectionType == WanConnection1x))) {
             dlManager.resumeMultipleOnAlternateInterface(Wan, altInterface, true);
         }
         if (dlManager.m_btpanConnectionStatus == InetConnectionDisconnected) {
@@ -1842,7 +1841,7 @@ bool DownloadManager::cbConnectionType(LSHandle* lshandle, LSMessage *message, v
  @}
  */
 //->End of API documentation comment block
-static bool cbAllow1x(LSHandle* lshandle, LSMessage *message, void *user_data)
+bool DownloadManager::cbAllow1x(LSHandle* lshandle, LSMessage *message, void *user_data)
 {
 
     LSError lserror;

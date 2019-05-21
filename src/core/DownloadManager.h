@@ -18,6 +18,7 @@
 #define __DownloadManager_h__
 
 #include <base/TransferTask.h>
+#include <core/DownloadHistory.h>
 #include <core/DownloadHistoryDb.h>
 #include <list>
 #include <string>
@@ -33,99 +34,113 @@
 
 #include "../external/glibcurl.h"
 
-#define     DOWNLOADMANAGER_DLBUFFERSIZE        1024*512
-#define     DOWNLOADMANAGER_UPDATEINTERVAL      1024*100
-#define     DOWNLOADMANAGER_UPDATENUM           20
-#define     DOWNLOADMANAGER_ERRORTHRESHOLD      10
+#define DOWNLOADMANAGER_DLBUFFERSIZE                        1024*512
+#define DOWNLOADMANAGER_UPDATEINTERVAL                      1024*100
+#define DOWNLOADMANAGER_UPDATENUM                           20
+#define DOWNLOADMANAGER_ERRORTHRESHOLD                      10
 
-#define     DOWNLOADMANAGER_TRUSTED_CERT_PATH   "/var/ssl/trustedcerts"
+#define DOWNLOADMANAGER_TRUSTED_CERT_PATH                   "/var/ssl/trustedcerts"
 
-#define     DOWNLOADMANAGER_STARTSTATUS_GENERALERROR            -1
-#define     DOWNLOADMANAGER_STARTSTATUS_FILEDOESNOTEXIST        -2
-#define     DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL               -3
-#define     DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL          -4
-#define     DOWNLOADMANAGER_STARTSTATUS_CURLERROR               -5
-#define     DOWNLOADMANAGER_STARTSTATUS_NOSUITABLEINTERFACE     -6
-#define     DOWNLOADMANAGER_STARTSTATUS_FAILEDSECURITYCHECK     -7
+#define DOWNLOADMANAGER_STARTSTATUS_GENERALERROR            -1
+#define DOWNLOADMANAGER_STARTSTATUS_FILEDOESNOTEXIST        -2
+#define DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL               -3
+#define DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL          -4
+#define DOWNLOADMANAGER_STARTSTATUS_CURLERROR               -5
+#define DOWNLOADMANAGER_STARTSTATUS_NOSUITABLEINTERFACE     -6
+#define DOWNLOADMANAGER_STARTSTATUS_FAILEDSECURITYCHECK     -7
 
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR       -1
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_CONNECTTIMEOUT     -2
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_FILECORRUPT        -3
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR    -4
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_HTTPERROR          -5
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_WRITEERROR         -6
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_INTERRUPTED        11
-#define     DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED          12
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR       -1
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_CONNECTTIMEOUT     -2
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_FILECORRUPT        -3
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR    -4
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_HTTPERROR          -5
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_WRITEERROR         -6
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_INTERRUPTED        11
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED          12
 
-#define     DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR            0
-#define     DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY           -1
-#define     DOWNLOADMANAGER_RESUMESTATUS_NOTINTERRUPTED         -2
-#define     DOWNLOADMANAGER_RESUMESTATUS_NOTDOWNLOAD            -3
-#define     DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL              -4
-#define     DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT         -5
-#define     DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP       -6
-#define     DOWNLOADMANAGER_RESUMESTATUS_INTERFACEDOWN          -7
-#define     DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL         -8
-#define     DOWNLOADMANAGER_RESUMESTATUS_OK                      1
+#define DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR            0
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY           -1
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTINTERRUPTED         -2
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTDOWNLOAD            -3
+#define DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL              -4
+#define DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT         -5
+#define DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP       -6
+#define DOWNLOADMANAGER_RESUMESTATUS_INTERFACEDOWN          -7
+#define DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL         -8
+#define DOWNLOADMANAGER_RESUMESTATUS_OK                      1
 
-#define     DOWNLOADMANAGER_PAUSESTATUS_GENERALERROR             0
-#define     DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK      -1
-#define     DOWNLOADMANAGER_PAUSESTATUS_OK                       1
+#define DOWNLOADMANAGER_PAUSESTATUS_GENERALERROR             0
+#define DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK      -1
+#define DOWNLOADMANAGER_PAUSESTATUS_OK                       1
 
-#define     DOWNLOADMANAGER_UPLOADSTATUS_OK                      0
-#define     DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR            1
-#define     DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM            2
+#define DOWNLOADMANAGER_UPLOADSTATUS_OK                      0
+#define DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR            1
+#define DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM            2
 
-#define SWAPTOIF_ERROR_INVALIDIF        -1
-#define SWAPTOIF_ERROR_NOSUCHTICKET     -2
-#define SWAPTOIF_SUCCESS                 1
+#define SWAPTOIF_ERROR_INVALIDIF                            -1
+#define SWAPTOIF_ERROR_NOSUCHTICKET                         -2
+#define SWAPTOIF_SUCCESS                                     1
 
-#define SWAPALLTOIF_ERROR_INVALIDIF             -1
-#define SWAPALLTOIF_ERROR_ATLEASTONEFAIL        -2
-#define SWAPALLTOIF_SUCCESS                      1
+#define SWAPALLTOIF_ERROR_INVALIDIF                         -1
+#define SWAPALLTOIF_ERROR_ATLEASTONEFAIL                    -2
+#define SWAPALLTOIF_SUCCESS                                  1
+
+enum {
+    keepOriginalFilenameOnRedirect = 16
+};
+
+enum ConnectionStatus {
+    InetConnectionUnknownState,
+    InetConnectionConnected,
+    InetConnectionDisconnected
+};
+
+enum WanConnectionType {
+    WanConnectionUnknown,
+    WanConnection1x,
+    WanConnectionHS
+};
+
+enum Connection {
+    ANY,
+    Wifi,
+    Wan,
+    Btpan,
+    Wired
+};
 
 class DownloadManager: public Singleton<DownloadManager> {
 friend class Singleton<DownloadManager> ;
 public:
     unsigned long generateNewTicket();
-    enum {
-        keepOriginalFilenameOnRedirect = 16
-    };
 
-    enum ConnectionStatus {
-        InetConnectionUnknownState,
-        InetConnectionConnected,
-        InetConnectionDisconnected
-    };
-
-    enum WanConnectionType {
-        WanConnectionUnknown,
-        WanConnection1x,
-        WanConnectionHS
-    };
-
-    enum Connection {
-        ANY,
-        Wifi,
-        Wan,
-        Btpan,
-        Wired
-    };
-
-    int download(const std::string& caller, const std::string& uri, const std::string& mime, const std::string& overrideTargetDir, const std::string& overrideTargetFile, const unsigned long ticket,
-                 bool keepOriginalFilenameOnRedirect, const std::string& authToken, const std::string& deviceId, Connection interface, bool canHandlePause, bool autoResume, bool appendTargetFile,
-                 const std::string& cookieHeader, const std::pair<uint64_t, uint64_t> range, const int remainingRedCounts);
+    int download(const std::string& caller,
+                 const std::string& uri,
+                 const std::string& mime,
+                 const std::string& overrideTargetDir,
+                 const std::string& overrideTargetFile,
+                 const unsigned long ticket,
+                 bool keepOriginalFilenameOnRedirect,
+                 const std::string& authToken,
+                 const std::string& deviceId,
+                 Connection interface,
+                 bool canHandlePause,
+                 bool autoResume,
+                 bool appendTargetFile,
+                 const std::string& cookieHeader,
+                 const std::pair<uint64_t, uint64_t> range,
+                 const int remainingRedCounts);
 
     int resumeDownload(const unsigned long ticket, const std::string& authToken, const std::string& deviceId, std::string& r_err);
-    int resumeDownload(const DownloadHistoryDb::DownloadHistory& history, bool autoResume, std::string& r_err);
-    int resumeDownload(const DownloadHistoryDb::DownloadHistory& history, bool autoResume, const std::string& authToken, const std::string& deviceId, std::string& r_err);
+    int resumeDownload(const DownloadHistory& history, bool autoResume, std::string& r_err);
+    int resumeDownload(const DownloadHistory& history, bool autoResume, const std::string& authToken, const std::string& deviceId, std::string& r_err);
     int resumeAll();
-    int resumeAllForInterface(Connection interface, bool autoResume);
-    int resumeDownloadOnAlternateInterface(DownloadHistoryDb::DownloadHistory& history, Connection newInterface, bool autoResume);
+    int resumeAll(Connection interface, bool autoResume);
+    int resumeDownloadOnAlternateInterface(DownloadHistory& history, Connection newInterface, bool autoResume);
     int resumeMultipleOnAlternateInterface(Connection oldInterface, Connection newInterface, bool autoResume);
     int pauseDownload(const unsigned long ticket, bool allowQueuedToStart = true);
     int pauseAll();
-    int pauseAllForInterface(Connection interface);
+    int pauseAll(Connection interface);
 
     int swapToInterface(const unsigned long int ticket, const Connection newInterface);
     int swapAllActiveToInterface(const Connection newInterface);
@@ -135,25 +150,25 @@ public:
     uint32_t uploadPOSTBuffer(const std::string& file, const std::string& url, std::vector<std::string>& httpHeaders, const std::string& contentType);
 
     bool cancel(unsigned long ticket);
-    void cancelFromHistory(DownloadHistoryDb::DownloadHistory& history);
+    void cancelFromHistory(DownloadHistory& history);
     void cancelAll();
 
     int getJSONListOfAllDownloads(std::vector<std::string>& list);
 
     bool getDownloadTaskCopy(unsigned long ticket, DownloadTask& task);
     bool getDownloadHistory(unsigned long ticket, std::string& r_caller, std::string& r_interface, std::string& r_state, std::string& r_history);
-    bool getDownloadHistory(unsigned long ticket, DownloadHistoryDb::DownloadHistory& r_history);
-    bool getDownloadHistoryAllByCaller(const std::string& ownerCaller, std::vector<DownloadHistoryDb::DownloadHistory>& r_histories);
+    bool getDownloadHistory(unsigned long ticket, DownloadHistory& r_history);
+    bool getDownloadHistoryAllByCaller(const std::string& ownerCaller, std::vector<DownloadHistory>& r_histories);
     int clearDownloadHistory();
     int clearDownloadHistoryByGlobbedOwner(const std::string& caller);
 
     std::string getDownloadPath();
     std::string getAltIpkDownloadPath();
 
-    static DownloadManager::Connection connectionName2Id(const std::string& name);
-    static std::string connectionId2Name(const DownloadManager::Connection id);
+    static Connection connectionName2Id(const std::string& name);
+    static std::string connectionId2Name(const Connection id);
     static bool is1xConnection(const std::string& networkType);
-    bool isInterfaceUp(DownloadManager::Connection connectionId);
+    bool isInterfaceUp(Connection connectionId);
 
     static bool spaceCheckOnFs(const std::string& path, uint64_t thresholdKB = 1024);
     static bool spaceOnFs(const std::string& path, uint64_t& spaceFreeKB, uint64_t& spaceTotalKB);
@@ -204,6 +219,7 @@ public:
     bool canDownloadNow();
     static bool cbConnectionType(LSHandle* lshandle, LSMessage *message, void *user_data);
     static gboolean cbIdleSourceGlibcurlCleanup(gpointer userData);
+    static bool cbAllow1x(LSHandle* lshandle, LSMessage *message, void *user_data);
     // msm
 
     static bool msmAvailCallback(LSHandle* handle, LSMessage* message, void* ctxt);
@@ -272,10 +288,8 @@ private:
     bool requestWakeLock(bool status);
     static bool cbRequestWakeLock(LSHandle* lshandle, LSMessage *msg, void *user_data);
 
-    LSHandle * m_serviceHandle;
-
     LSMessageToken m_storageDaemonToken;
-    DownloadHistoryDb * m_pDlDb;
+    DownloadHistoryDb* m_pDlDb;
     int m_activeTaskCount;
     bool m_glibCurlInitialized;
     GMainLoop* m_mainLoop;
@@ -301,8 +315,9 @@ private:
     bool shutdownGlibCurl();
 
     DownloadManager();
-    ~DownloadManager();
+    virtual ~DownloadManager();
 
+    static bool s_allow1x;              ///TODO: make this a more appropriately protected class member
     static unsigned long s_ticketGenerator;
 
     bool m_fscking;
@@ -311,8 +326,8 @@ private:
     bool m_mode;
 
     std::string m_sleepDClientId;
-public:
-    static bool s_allow1x;              ///TODO: make this a more appropriately protected class member
+
+    LSHandle* m_serviceHandle;
 };
 
 #endif
