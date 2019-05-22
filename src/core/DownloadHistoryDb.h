@@ -21,10 +21,12 @@
 #include <vector>
 #include <sqlite3.h>
 
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_OK                    0
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_GENERALERROR          1
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR          2
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_NOTINHISTORY          3
+enum HistoryStatus {
+    HistoryStatus_OK = 0,
+    HistoryStatus_GENERALERROR = 1,
+    HistoryStatus_HISTORYERROR = 2,
+    HistoryStatus_NOTINHISTORY = 3
+};
 
 #include "DownloadHistory.h"
 

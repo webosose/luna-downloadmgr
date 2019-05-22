@@ -28,6 +28,8 @@ typedef std::pair<std::string, std::string> kvpair;
 
 class UploadTask {
 public:
+    static const char* TRUSTED_CERT_PATH;
+
     static UploadTask * newFileUploadTask(const std::string& targeturl, const std::string& sourcefile, const std::string& filemimepartlabel, std::vector<PostItem>& postparts,
             std::vector<std::string>& httpheaders, std::vector<kvpair>& cookies, const std::string& contenttype);
     static UploadTask * newBufferUploadTask(const std::string& targeturl, const std::string& sourcebuffer, std::vector<std::string>& httpheaders, const std::string& contenttype);

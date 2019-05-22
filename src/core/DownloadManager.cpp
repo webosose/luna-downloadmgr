@@ -42,6 +42,10 @@ extern GMainLoop* gMainLoop;
 static const char* downloadPrefix = ".";
 
 unsigned long DownloadManager::s_ticketGenerator = 1;
+const int DownloadManager::DOWNLOAD_BUFFER_SIZE = 1024*512;
+const int DownloadManager::UPDATE_INTERVAL = 1024*100;
+const int DownloadManager::UPDATE_NUM = 20;
+const int DownloadManager::ERROR_THRESHOLD = 10;
 
 //#define CURL_COOKIE_SHARING
 static CURLSH* s_curlShareHandle = 0;
@@ -87,12 +91,12 @@ std::string DownloadManager::generateTempPath(const std::string& resourceName)
 }
 
 DownloadManager::DownloadManager()
-    : m_wanConnectionTypePrevious(WanConnectionUnknown),
-      m_wanConnectionStatus(InetConnectionUnknownState),
-      m_wanConnectionType(WanConnectionUnknown),
-      m_wifiConnectionStatus(InetConnectionUnknownState),
-      m_btpanConnectionStatus(InetConnectionUnknownState),
-      m_wiredConnectionStatus(InetConnectionUnknownState),
+    : m_wanConnectionTypePrevious(WanConnectionType_Unknown),
+      m_wanConnectionStatus(ConnectionStatus_Unknown),
+      m_wanConnectionType(WanConnectionType_Unknown),
+      m_wifiConnectionStatus(ConnectionStatus_Unknown),
+      m_btpanConnectionStatus(ConnectionStatus_Unknown),
+      m_wiredConnectionStatus(ConnectionStatus_Unknown),
       m_wanInterfaceName(DownloadSettings::Settings()->m_wanInterfaceName),
       m_wifiInterfaceName(DownloadSettings::Settings()->m_wifiInterfaceName),
       m_btpanInterfaceName(DownloadSettings::Settings()->m_btpanInterfaceName),
@@ -239,7 +243,7 @@ int DownloadManager::download(
         bool keepOriginalFilenameOnRedirect,
         const std::string& authToken,
         const std::string& deviceId,
-        Connection interface,
+        ConnectionType interface,
         bool canHandlePause,
         bool autoResume,
         bool appendTargetFile,
@@ -259,31 +263,31 @@ int DownloadManager::download(
 
     // if the queue is already full, no point in continuing
     if (m_queue.size() >= DownloadSettings::Settings()->m_maxDownloadManagerQueueLength) {
-        return DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL;
+        return StartStatus_QUEUEFULL;
     }
 
-    if (interface == ANY) {
+    if (interface == ConnectionType_ANY) {
         //determine a good interface to use
-        if (m_wiredConnectionStatus == InetConnectionConnected)
-            interface = Wired;
-        else if (m_wifiConnectionStatus == InetConnectionConnected)
-            interface = Wifi;
-        else if (m_wanConnectionStatus == InetConnectionConnected)
-            interface = Wan;
-        else if (m_btpanConnectionStatus == InetConnectionConnected)
-            interface = Btpan;
+        if (m_wiredConnectionStatus == ConnectionStatus_Connected)
+            interface = ConnectionType_Wired;
+        else if (m_wifiConnectionStatus == ConnectionStatus_Connected)
+            interface = ConnectionType_Wifi;
+        else if (m_wanConnectionStatus == ConnectionStatus_Connected)
+            interface = ConnectionType_Wan;
+        else if (m_btpanConnectionStatus == ConnectionStatus_Connected)
+            interface = ConnectionType_Btpan;
 
         //else leave as any
 //      LOG_DEBUG ("%s: interface was specified as ANY, picked %s",__func__,DownloadManager::connectionId2Name(interface).c_str());
     }
 
-    if ((interface == Wan) && ((m_wanConnectionType == WanConnection1x) && !s_allow1x)) {
+    if ((interface == ConnectionType_Wan) && ((m_wanConnectionType == WanConnectionType_1x) && !s_allow1x)) {
         LOG_DEBUG("%s: Interface picked as WAN but 1x mode is active on WAN and 1x isn't allowed...aborting", __FUNCTION__);
-        return DOWNLOADMANAGER_STARTSTATUS_NOSUITABLEINTERFACE;
+        return StartStatus_NOSUITABLEINTERFACE;
     }
-    if ((interface == ANY) && ((m_wanConnectionType == WanConnection1x) && !s_allow1x)) {
+    if ((interface == ConnectionType_ANY) && ((m_wanConnectionType == WanConnectionType_1x) && !s_allow1x)) {
         LOG_DEBUG("%s: Interface picked as ANY but 1x mode is active on WAN and 1x isn't allowed. Cannot chance downloads starting on the WAN interface...aborting", __FUNCTION__);
-        return DOWNLOADMANAGER_STARTSTATUS_NOSUITABLEINTERFACE;
+        return StartStatus_NOSUITABLEINTERFACE;
     }
 
     //LOG_DEBUG ("%s: Interface %s and allow1x is %s",__FUNCTION__,DownloadManager::connectionId2Name(interface).c_str(),(s_allow1x ? "TRUE" : "FALSE"));
@@ -300,7 +304,7 @@ int DownloadManager::download(
                           PMLOGKS("uri", uri.c_str()),
                           PMLOGKS("scheme", parsedUrl.m_scheme.c_str()),
                           "this scheme is not allowed");
-        return DOWNLOADMANAGER_STARTSTATUS_FAILEDSECURITYCHECK;
+        return StartStatus_FAILEDSECURITYCHECK;
     }
 
     DownloadTask* task = new DownloadTask;
@@ -348,7 +352,7 @@ int DownloadManager::download(
     if (!DownloadManager::spaceOnFs(task->m_destPath, spaceFreeKB, spaceTotalKB)) {
         //can't stat the filesys...treat the same as out of space
         delete p_ttask;
-        return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
+        return StartStatus_FILESYSTEMFULL;
     }
 
     this->filesystemStatusCheck(spaceFreeKB, spaceTotalKB, NULL, &stopMarkReached);
@@ -356,7 +360,7 @@ int DownloadManager::download(
     if (DownloadSettings::Settings()->m_preemptiveFreeSpaceCheck) {
         if (stopMarkReached) {
             delete p_ttask;
-            return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
+            return StartStatus_FILESYSTEMFULL;
         }
     }
 
@@ -458,7 +462,7 @@ int DownloadManager::download(
 
         if (fd == -1) {
             delete p_ttask;
-            return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
+            return StartStatus_FILESYSTEMFULL;
         }
 
         task->m_fp = fdopen(fd, "wb");
@@ -466,7 +470,7 @@ int DownloadManager::download(
 
     if (task->m_fp == NULL) {
         delete p_ttask;
-        return DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL;
+        return StartStatus_FILESYSTEMFULL;
     }
 
     //LOG_DEBUG ("File pointer for [%s]/[%s] is %x\n",task->destPath.c_str(),task->destFile.c_str(),(int)(task->fp));
@@ -477,7 +481,7 @@ int DownloadManager::download(
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SHARE, s_curlShareHandle)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_SHARE failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, UploadTask::TRUSTED_CERT_PATH)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_CAPATH failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, task->m_url.c_str())) != CURLE_OK)
@@ -504,7 +508,7 @@ int DownloadManager::download(
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 1)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_NOPROGRESS failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_BUFFERSIZE, DOWNLOADMANAGER_DLBUFFERSIZE)) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_BUFFERSIZE, DOWNLOAD_BUFFER_SIZE)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_BUFFERSIZE failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SOCKOPTDATA, task)) != CURLE_OK)
@@ -525,24 +529,24 @@ int DownloadManager::download(
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HEADERFUNCTION, cbCurlHeaderInfo)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_HEADERFUNCTION failed [%d]\n", curlSetOptRc);
 
-    if (interface == Wired) {
+    if (interface == ConnectionType_Wired) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wiredInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
-        task->m_connectionName = DownloadManager::connectionId2Name(Wired);
-    } else if (interface == Wifi) {
+        task->m_connectionName = DownloadManager::connectionId2Name(ConnectionType_Wired);
+    } else if (interface == ConnectionType_Wifi) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wifiInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
-        task->m_connectionName = DownloadManager::connectionId2Name(Wifi);
-    } else if (interface == Wan) {
+        task->m_connectionName = DownloadManager::connectionId2Name(ConnectionType_Wifi);
+    } else if (interface == ConnectionType_Wan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
-        task->m_connectionName = DownloadManager::connectionId2Name(Wan);
-    } else if (interface == Btpan) {
+        task->m_connectionName = DownloadManager::connectionId2Name(ConnectionType_Wan);
+    } else if (interface == ConnectionType_Btpan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_btpanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("%s: [INTERFACE-CHOICE]: curl set opt: CURLOPT_INTERFACE failed [%d] for ticket %lu", __FUNCTION__, curlSetOptRc, task->m_ticket);
-        task->m_connectionName = DownloadManager::connectionId2Name(Btpan);
+        task->m_connectionName = DownloadManager::connectionId2Name(ConnectionType_Btpan);
     } else {
-        task->m_connectionName = DownloadManager::connectionId2Name(ANY);     //TODO: get rid of this; really shouldn't get this far if there was no connection available
+        task->m_connectionName = DownloadManager::connectionId2Name(ConnectionType_ANY);     //TODO: get rid of this; really shouldn't get this far if there was no connection available
     }
 
 //    LOG_DEBUG ("%s: [INTERFACE-CHOICE]: tried picking if=[%s] for ticket %lu (see above for any failed setopts)",__FUNCTION__,task->connectionName.c_str(),task->ticket);
@@ -604,7 +608,7 @@ int DownloadManager::resumeDownload(const unsigned long ticket, const std::strin
     //retrieve the ticket from the history
     if (getDownloadHistory(ticket, history) == 0) {
         r_err = "Download ticket specified does not exist in history";
-        return DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY;
+        return ResumeStatus_NOTINHISTORY;
     }
     gchar* escaped_errtext = g_strescape(history.m_downloadRecordJsonString.c_str(), NULL);
     if (escaped_errtext) {
@@ -632,17 +636,17 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     pbnjson::JValue root = JUtil::parse(history.m_downloadRecordJsonString.c_str(), std::string(""));
     if (root.isNull()) {
         r_err = "Couldn't parse history string: " + history.m_downloadRecordJsonString;
-        return DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY;
+        return ResumeStatus_NOTINHISTORY;
     }
 
     if (history.m_state != "interrupted") {
         r_err = "Specified download was not interrupted";
-        return DOWNLOADMANAGER_RESUMESTATUS_NOTINTERRUPTED;
+        return ResumeStatus_NOTINTERRUPTED;
     }
 
-    if (isInterfaceUp(ANY) == false) {
+    if (isInterfaceUp(ConnectionType_ANY) == false) {
         r_err = "no data connection available";
-        return DOWNLOADMANAGER_RESUMESTATUS_INTERFACEDOWN;
+        return ResumeStatus_INTERFACEDOWN;
     }
 
     uint64_t totalSize = 0;
@@ -650,7 +654,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
         /// Old style entry, with 32 bit ints
         if (!root.hasKey("amountTotal")) {
             r_err = "amountTotal not found in the history record";
-            return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+            return ResumeStatus_HISTORYCORRUPT;
         } else {
             totalSize = root["amountTotal"].asNumber<int64_t>();
         }
@@ -662,7 +666,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     if (!root.hasKey("e_amountReceived")) {
         if (!root.hasKey("amountReceived")) {
             r_err = " amountReceived not found in the history record";
-            return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+            return ResumeStatus_HISTORYCORRUPT;
         } else {
             completedSize = root["amountReceived"].asNumber<int64_t>();
         }
@@ -674,7 +678,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     if (!root.hasKey("e_initialOffset")) {
         if (!root.hasKey("initialOffset")) {
             r_err = " initialOffset not found in the history record";
-            return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+            return ResumeStatus_HISTORYCORRUPT;
         } else {
             initialOffset = root["initialOffset"].asNumber<int64_t>();
         }
@@ -685,7 +689,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     std::string uri = "";
     if (root["sourceUrl"].asString(uri) != CONV_OK) {
         r_err = "sourceUrl not found in the history record";
-        return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+        return ResumeStatus_HISTORYCORRUPT;
     }
 
     std::string cookieHeader = "";
@@ -695,7 +699,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     std::string destTempFile = "";
     if (root["target"].asString(destTempFile) != CONV_OK) {
         r_err = "target (dest tmp file name) not found in history record";
-        return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+        return ResumeStatus_HISTORYCORRUPT;
     }
 
     std::string destTempPrefix = "";
@@ -706,7 +710,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     uint64_t spaceTotalKB = 0;
     if (!DownloadManager::spaceOnFs(destTempFile, spaceFreeKB, spaceTotalKB)) {
         //can't stat the filesys...treat the same as out of space
-        return DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL;
+        return ResumeStatus_FILESYSTEMFULL;
     }
 
     bool stopMarkReached = false;
@@ -715,7 +719,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     uint64_t remainSize = totalSize - completedSize;
     if (DownloadSettings::Settings()->m_preemptiveFreeSpaceCheck) {
         if ((spaceFreeKB < (remainSize >> 10)) || (stopMarkReached)) {
-            return DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL;
+            return ResumeStatus_FILESYSTEMFULL;
         }
     }
     //the target must exist
@@ -730,13 +734,13 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     std::string destFinalFile = "";
     if (root["destFile"].asString(destFinalFile) != CONV_OK) {
         r_err = "destFile (dest file name) not found in history record";
-        return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+        return ResumeStatus_HISTORYCORRUPT;
     }
 
     std::string destFinalPath = "";
     if (root["destPath"].asString(destFinalPath) != CONV_OK) {
         r_err = "destPath (dest path name) not found in history record";
-        return DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT;
+        return ResumeStatus_HISTORYCORRUPT;
     }
     bool canHandlePause = false;
     if (!root.hasKey("canHandlePause")) {
@@ -752,7 +756,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
         taskAutoResume = root["autoResume"].asBool();
     if (autoResume && !taskAutoResume) {
         r_err = "this task does not support auto resume";
-        return DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR;
+        return ResumeStatus_GENERALERROR;
     }
 
     std::string deviceIdToUse;
@@ -774,7 +778,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
 
     // if the queue is already full, no point in continuing
     if (m_queue.size() >= DownloadSettings::Settings()->m_maxDownloadManagerQueueLength) {
-        return DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL;
+        return ResumeStatus_QUEUEFULL;
     }
 
     FILE * fp = NULL;
@@ -786,7 +790,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
 
     if ((fp = fopen(destTempFile.c_str(), wrmode.c_str())) == NULL) {
         r_err = "cannot open temp file in write/update mode";
-        return DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP;
+        return ResumeStatus_CANNOTACCESSTEMP;
     }
 
     //seek to the correct place
@@ -795,7 +799,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
         LOG_WARNING_PAIRS(LOGID_RESUME_FSEEK_FAIL, 1, PMLOGKFV("ptr", "%lu", ftell(fp)), "moving file ptr failed");
         fclose(fp);
         r_err = "cannot open temp file: seek-set failed";
-        return DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP;
+        return ResumeStatus_CANNOTACCESSTEMP;
     }
 
     DownloadTask* p_dlTask = new DownloadTask;
@@ -831,14 +835,14 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     } else {
         LOG_WARNING_PAIRS_ONLY(LOGID_INTERFACE_FAIL_ON_RESUME, 1, PMLOGKS("interface name", history.m_interface.c_str()));
         //determine a good interface to use
-        if (m_wiredConnectionStatus == InetConnectionConnected)
-            p_dlTask->m_connectionName = connectionId2Name(Wired);
-        else if (m_wifiConnectionStatus == InetConnectionConnected)
-            p_dlTask->m_connectionName = connectionId2Name(Wifi);
-        else if (m_wanConnectionStatus == InetConnectionConnected)
-            p_dlTask->m_connectionName = connectionId2Name(Wan);
-        else if (m_btpanConnectionStatus == InetConnectionConnected)
-            p_dlTask->m_connectionName = connectionId2Name(Btpan);
+        if (m_wiredConnectionStatus == ConnectionStatus_Connected)
+            p_dlTask->m_connectionName = connectionId2Name(ConnectionType_Wired);
+        else if (m_wifiConnectionStatus == ConnectionStatus_Connected)
+            p_dlTask->m_connectionName = connectionId2Name(ConnectionType_Wifi);
+        else if (m_wanConnectionStatus == ConnectionStatus_Connected)
+            p_dlTask->m_connectionName = connectionId2Name(ConnectionType_Wan);
+        else if (m_btpanConnectionStatus == ConnectionStatus_Connected)
+            p_dlTask->m_connectionName = connectionId2Name(ConnectionType_Btpan);
     }
 
     CURL * curlHandle;
@@ -848,7 +852,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SHARE, s_curlShareHandle)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_SHARE failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_CAPATH, UploadTask::TRUSTED_CERT_PATH)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_CAPATH failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_URL, p_dlTask->m_url.c_str())) != CURLE_OK)
@@ -872,7 +876,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 1)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_NOPROGRESS failed [%d]\n", curlSetOptRc);
 
-    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_BUFFERSIZE, DOWNLOADMANAGER_DLBUFFERSIZE)) != CURLE_OK)
+    if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_BUFFERSIZE, DOWNLOAD_BUFFER_SIZE)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_BUFFERSIZE failed [%d]\n", curlSetOptRc);
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SOCKOPTDATA, p_dlTask)) != CURLE_OK)
@@ -893,18 +897,18 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HEADERFUNCTION, cbCurlHeaderInfo)) != CURLE_OK)
         LOG_DEBUG("curl set opt: CURLOPT_HEADERFUNCTION failed [%d]\n", curlSetOptRc);
 
-    if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wired) {
+    if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == ConnectionType_Wired) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wiredInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
-    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wifi) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == ConnectionType_Wifi) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wifiInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
-    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Wan) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == ConnectionType_Wan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_wanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
-    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == Btpan) {
+    } else if (DownloadManager::connectionName2Id(p_dlTask->m_connectionName) == ConnectionType_Btpan) {
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_INTERFACE, const_cast<char*>(m_btpanInterfaceName.c_str()))) != CURLE_OK)
             LOG_DEBUG("curl set opt: CURLOPT_INTERFACE failed [%d]\n", curlSetOptRc);
 
@@ -951,7 +955,7 @@ int DownloadManager::resumeDownload(const DownloadHistory& history, bool autoRes
         m_pDlDb->addHistory(p_dlTask->m_ticket, p_dlTask->m_ownerId, p_dlTask->m_connectionName, "queued", p_dlTask->toJSONString());
     }
 
-    return DOWNLOADMANAGER_RESUMESTATUS_OK;
+    return ResumeStatus_OK;
 }
 
 int DownloadManager::resumeAll()
@@ -975,7 +979,7 @@ int DownloadManager::resumeAll()
     return rc;
 }
 
-int DownloadManager::resumeAll(Connection interface, bool autoResume)
+int DownloadManager::resumeAll(ConnectionType interface, bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
     std::vector<DownloadHistory> interrupteds;
@@ -997,14 +1001,14 @@ int DownloadManager::resumeAll(Connection interface, bool autoResume)
     return rc;
 }
 
-int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistory& history, Connection newInterface, bool autoResume)
+int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistory& history, ConnectionType newInterface, bool autoResume)
 {
     std::string err;
     history.m_interface = DownloadManager::connectionId2Name(newInterface);
     return resumeDownload(history, autoResume, err);
 }
 
-int DownloadManager::resumeMultipleOnAlternateInterface(Connection oldInterface, Connection newInterface, bool autoResume)
+int DownloadManager::resumeMultipleOnAlternateInterface(ConnectionType oldInterface, ConnectionType newInterface, bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
     std::vector<DownloadHistory> interrupteds;
@@ -1034,20 +1038,20 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
     std::map<long, DownloadTask*>::iterator iter = m_ticketMap.find(ticket);
     if (iter == m_ticketMap.end() || iter->second == NULL) {
         //nothing to do..this task didn't exist
-        return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
+        return PauseStatus_NOSUCHDOWNLOADTASK;
     }
 
     if (!iter->second->m_canHandlePause) {
         LOG_WARNING_PAIRS(LOGID_NOTABLE_TO_PAUSE, 1, PMLOGKFV("ticket", "%lu", ticket), "cannot handle this pause request, it will be canceled");
         cancel(ticket);
-        return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
+        return PauseStatus_NOSUCHDOWNLOADTASK;
     }
 
     TransferTask * _task = removeTask_dl(ticket);
 
     if (_task == NULL) {
         //nothing to do..this task didn't exist
-        return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
+        return PauseStatus_NOSUCHDOWNLOADTASK;
     }
 
     DownloadTask * task = _task->m_downloadTask;
@@ -1059,7 +1063,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
     pbnjson::JValue payloadJsonObj = task->toJSON();
     std::string payload;
 
-    payloadJsonObj.put("completionStatusCode", DOWNLOADMANAGER_COMPLETIONSTATUS_INTERRUPTED);
+    payloadJsonObj.put("completionStatusCode", CompletionStatus_INTERRUPTED);
 
     std::string dest = task->m_destPath + task->m_downloadPrefix + task->m_destFile;
     payloadJsonObj.put("interrupted", true);
@@ -1097,7 +1101,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket, bool allowQueuedT
             m_pDlDb->addHistory(nextDownload->m_ticket, nextDownload->m_ownerId, task->m_connectionName, "running", nextDownload->toJSONString());
         }
     }
-    return DOWNLOADMANAGER_PAUSESTATUS_OK;
+    return PauseStatus_OK;
 }
 
 int DownloadManager::pauseAll()
@@ -1113,7 +1117,7 @@ int DownloadManager::pauseAll()
     return 1;
 }
 
-int DownloadManager::pauseAll(Connection interface)
+int DownloadManager::pauseAll(ConnectionType interface)
 {
     //run through the whole ticket map and call pause download on all that match the connection specified...flag pause() so that it doesn't start queued downloads
     //Can't do this directly because the pause() fn modifies the map I'm iterating on. Do it via intermediate list
@@ -1129,10 +1133,10 @@ int DownloadManager::pauseAll(Connection interface)
     return 1;
 }
 
-int DownloadManager::swapToInterface(const unsigned long int ticket, const Connection newInterface)
+int DownloadManager::swapToInterface(const unsigned long int ticket, const ConnectionType newInterface)
 {
     //the interface cannot be ANY
-    if (newInterface == ANY)
+    if (newInterface == ConnectionType_ANY)
         return SWAPTOIF_ERROR_INVALIDIF;
 
     //find the ticket in the map
@@ -1142,7 +1146,7 @@ int DownloadManager::swapToInterface(const unsigned long int ticket, const Conne
 
     DownloadTask * pDltask = it->second;
     //if the task interface is ANY, cannot be swapped
-    if (pDltask->m_connectionName == DownloadManager::connectionId2Name(ANY))
+    if (pDltask->m_connectionName == DownloadManager::connectionId2Name(ConnectionType_ANY))
         return SWAPTOIF_ERROR_INVALIDIF;
     //check the interface the task is on right now
     if (pDltask->m_connectionName == DownloadManager::connectionId2Name(newInterface))
@@ -1156,18 +1160,18 @@ int DownloadManager::swapToInterface(const unsigned long int ticket, const Conne
 
     std::string ifaceName;
     switch (newInterface) {
-    case Wired:
+    case ConnectionType_Wired:
         ifaceName = m_wiredInterfaceName;
         break;
-    case Wifi:
+    case ConnectionType_Wifi:
         ifaceName = m_wifiInterfaceName;
         break;
-    case Wan:
+    case ConnectionType_Wan:
         ifaceName = m_wanInterfaceName;
         break;
-    case Btpan:
+    case ConnectionType_Btpan:
         ifaceName = m_btpanInterfaceName;
-    case ANY:
+    case ConnectionType_ANY:
         return SWAPTOIF_ERROR_INVALIDIF;        //to make switch happy
     }
 
@@ -1192,9 +1196,9 @@ int DownloadManager::swapToInterface(const unsigned long int ticket, const Conne
     return SWAPTOIF_SUCCESS;
 }
 
-int DownloadManager::swapAllActiveToInterface(const Connection newInterface)
+int DownloadManager::swapAllActiveToInterface(const ConnectionType newInterface)
 {
-    if (newInterface == ANY)
+    if (newInterface == ConnectionType_ANY)
         return SWAPALLTOIF_ERROR_INVALIDIF;
 
     bool success = true;
@@ -1248,7 +1252,7 @@ size_t DownloadManager::cbHeader(CURL * taskHandle, size_t headerSize, const cha
 
     //PAST THIS POINT, IT MUST BE A DOWNLOAD TASK
 
-    if (_task->m_type != DOWNLOAD_TASK) {
+    if (_task->m_type != TransferTaskType_DOWNLOAD) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return headerSize;
     }
@@ -1346,7 +1350,7 @@ size_t DownloadManager::cbGlib()
             if (_task == NULL)
                 goto Return_cbGlib;
 
-            if (_task->m_type == DOWNLOAD_TASK) {
+            if (_task->m_type == TransferTaskType_DOWNLOAD) {
 
                 //complete this transfer..remove the task...
                 dl_task = _task->m_downloadTask;
@@ -1355,7 +1359,7 @@ size_t DownloadManager::cbGlib()
                     dl_task->m_curlDesc.setHttpResultCode(l_httpCode);
                     dl_task->m_curlDesc.setHttpConnectCode(l_httpConnectCode);
                 }
-            } else if (_task->m_type == UPLOAD_TASK) {
+            } else if (_task->m_type == TransferTaskType_UPLOAD) {
                 ul_task = _task->m_uploadTask;
                 if (ul_task != NULL) {
                     ul_task->setCURLCode(resultCode);
@@ -1394,7 +1398,7 @@ size_t DownloadManager::cbWriteEvent(CURL * taskHandle, size_t payloadSize, unsi
         return 0;
     }
 
-    if ((_task->m_type != DOWNLOAD_TASK)) {
+    if ((_task->m_type != TransferTaskType_DOWNLOAD)) {
         //LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
@@ -1405,11 +1409,11 @@ size_t DownloadManager::cbWriteEvent(CURL * taskHandle, size_t payloadSize, unsi
     if (task->m_fp) {
         nwritten = fwrite(payload, 1, payloadSize, task->m_fp);
         if ((nwritten < (size_t) payloadSize)) {
-            task->m_numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;           //hack...fail it immediately  TODO: rewrite this
+            task->m_numErrors = ERROR_THRESHOLD;           //hack...fail it immediately  TODO: rewrite this
         }
     }
 
-    if ((task->m_fp == NULL) || (task->m_numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
+    if ((task->m_fp == NULL) || (task->m_numErrors >= ERROR_THRESHOLD)) {
         LOG_WARNING_PAIRS(LOGID_EXCEED_ERROR_THRESHOLD, 2, PMLOGKFV("total bytes", "%u", nwritten), PMLOGKFV("payload size", "%u", payloadSize), "this task will be discarded, marked as 'removed'");
         //null file pointer? or num errors during this transfer was too high... this download isn't going anywhere...complete it
         _task->m_remove = true;
@@ -1466,7 +1470,7 @@ size_t DownloadManager::cbReadEvent(CURL* taskHandle, size_t payloadSize, unsign
         return 0;
     }
 
-    if (_task->m_type != DOWNLOAD_TASK) {
+    if (_task->m_type != TransferTaskType_DOWNLOAD) {
 //      LOG_DEBUG ("%s: TransferTask is not a Download. Function-Exit-Early",__FUNCTION__);
         return 0;
     }
@@ -1478,11 +1482,11 @@ size_t DownloadManager::cbReadEvent(CURL* taskHandle, size_t payloadSize, unsign
     if (task->m_fp) {
         nwritten = fread(payload, 1, payloadSize, task->m_fp);
         if ((nwritten < (size_t) payloadSize)) {
-            task->m_numErrors = DOWNLOADMANAGER_ERRORTHRESHOLD;
+            task->m_numErrors = ERROR_THRESHOLD;
         }
     }
 
-    if ((task->m_fp == NULL) || (task->m_numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
+    if ((task->m_fp == NULL) || (task->m_numErrors >= ERROR_THRESHOLD)) {
         //null file pointer? or num errors during this transfer was too high... this download isn't going anywhere...complete it
 //        removeTask(taskHandle);           ///AWKWARD!
 //        completed(_task);
@@ -1497,7 +1501,7 @@ size_t DownloadManager::cbReadEvent(CURL* taskHandle, size_t payloadSize, unsign
     task->m_bytesCompleted += payloadSize;
     //LOG_DEBUG ("%s: Task bytes completed now = %ld",__FUNCTION__,task->bytesCompleted);
 
-    if ((task->m_lastUpdateAt == 0) || (task->m_bytesCompleted - task->m_lastUpdateAt >= DOWNLOADMANAGER_UPDATEINTERVAL)) {
+    if ((task->m_lastUpdateAt == 0) || (task->m_bytesCompleted - task->m_lastUpdateAt >= UPDATE_INTERVAL)) {
         LSError lserror;
         LSErrorInit(&lserror);
 
@@ -1556,9 +1560,9 @@ void DownloadManager::completed(TransferTask * task)
         return;
     }
 
-    if (task->m_type == DOWNLOAD_TASK)
+    if (task->m_type == TransferTaskType_DOWNLOAD)
         completed_dl(task->m_downloadTask);
-    if (task->m_type == UPLOAD_TASK)
+    if (task->m_type == TransferTaskType_UPLOAD)
         completed_ul(task->m_uploadTask);
 
     delete task;
@@ -1630,7 +1634,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
             LOG_DEBUG("DownloadManager::completed(): Transfer error: HTTP error code = %d\n", (int )resultCode);
             LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
             //HTTP error of some kind
-            resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_HTTPERROR;
+            resultCode = CompletionStatus_HTTPERROR;
             transferError = true;
             interrupted = false;
         }
@@ -1640,15 +1644,15 @@ void DownloadManager::completed_dl(DownloadTask* task)
         LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
         resultCode = task->m_curlDesc.getResultCode();
         if (resultCode == CURLE_OPERATION_TIMEDOUT) {
-            resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_CONNECTTIMEOUT;
+            resultCode = CompletionStatus_CONNECTTIMEOUT;
             transferError = false;
             interrupted = true;
         } else if (resultCode == CURLE_WRITE_ERROR) {
-            resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_WRITEERROR;
+            resultCode = CompletionStatus_WRITEERROR;
             transferError = false;
             interrupted = true;
         } else {
-            resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR;
+            resultCode = CompletionStatus_GENERALERROR;
             if (task->m_bytesTotal > 0) {
                 transferError = false;
                 interrupted = true;
@@ -1660,14 +1664,14 @@ void DownloadManager::completed_dl(DownloadTask* task)
         //sizes don't match...maybe a filesys error
         LOG_DEBUG("DownloadManager::completed(): Transfer error: bytesCompleted [%llu] < [%llu] bytesTotal...filesys error?", task->m_bytesCompleted, task->m_bytesTotal);
         LOG_DEBUG("DownloadManager::completed(): Transfer error: URL failed = %s\n", task->m_url.c_str());
-        resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_FILECORRUPT;
+        resultCode = CompletionStatus_FILECORRUPT;
         transferError = false;
         interrupted = true;
     }
 
     if (interrupted && !task->m_canHandlePause) {
         transferError = true;
-        resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR;
+        resultCode = CompletionStatus_GENERALERROR;
     }
 
     pbnjson::JValue payloadJsonObj = task->toJSON();
@@ -1687,10 +1691,10 @@ void DownloadManager::completed_dl(DownloadTask* task)
         int retVal = rename(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str(), std::string(task->m_destPath + task->m_destFile).c_str());
 
         if (0 != retVal) {
-            LOG_DEBUG("renaming failed, setting file system error (%d)", DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR);
+            LOG_DEBUG("renaming failed, setting file system error (%d)", CompletionStatus_FILESYSTEMERROR);
             unlink(std::string(task->m_destPath + task->m_downloadPrefix + task->m_destFile).c_str());
             transferError = true;
-            resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR;
+            resultCode = CompletionStatus_FILESYSTEMERROR;
         }
 
         // file sync after rename()
@@ -1814,7 +1818,7 @@ bool DownloadManager::cancel(unsigned long ticket)
 
     _task->m_remove = true;
 
-    if (_task->m_type == UPLOAD_TASK) {
+    if (_task->m_type == TransferTaskType_UPLOAD) {
         //TODO: when The Great Rewrite comes, make me more OOP-ly
         UploadTask * task = _task->m_uploadTask;
         postUploadStatus(task);
@@ -1835,7 +1839,7 @@ bool DownloadManager::cancel(unsigned long ticket)
     pbnjson::JValue jsonPayloadObj = task->toJSON();
     std::string historyString = JUtil::toSimpleString(jsonPayloadObj);
     jsonPayloadObj.put("target", (task->m_destPath + task->m_downloadPrefix + task->m_destFile));
-    jsonPayloadObj.put("completionStatusCode", DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED);
+    jsonPayloadObj.put("completionStatusCode", CompletionStatus_CANCELLED);
     jsonPayloadObj.put("aborted", true);
     jsonPayloadObj.put("completed", false);
     jsonPayloadObj.put("interrupted", false);
@@ -1911,8 +1915,8 @@ void DownloadManager::cancelFromHistory(DownloadHistory& history)
         }
     }
 
-    std::string payload = std::string("{\"ticket\":") + key + (!extractError ? std::string(" , \"url\":\"") + uri + std::string("\"") : std::string("")) + std::string(" , \"aborted\":true")
-            + std::string(" , \"completed\":false }");
+    std::string payload = std::string("{\"ticket\":") +
+                          key + (!extractError ? std::string(" , \"url\":\"") + uri + std::string("\"") : std::string("")) + std::string(" , \"aborted\":true") + std::string(" , \"completed\":false }");
     if (!postDownloadUpdate(history.m_owner, history.m_ticket, payload)) {
         LOG_WARNING_PAIRS(LOGID_SUBSCRIPTIONREPLY_FAIL_ON_CANCELHISTORY, 2, PMLOGKS("ticket", key.c_str()), PMLOGKS("detail", payload.c_str()), "failed to update cancellation status to subscribers");
     }
@@ -1924,8 +1928,8 @@ void DownloadManager::cancelFromHistory(DownloadHistory& history)
     }
 
     //add to database record
-    m_pDlDb->addHistory(history.m_ticket, history.m_owner, history.m_interface, "cancelled", payload);  ///TODO: PAYLOAD still has old 'state'...will fix this when states are removed from history json
-
+    ///TODO: PAYLOAD still has old 'state'...will fix this when states are removed from history json
+    m_pDlDb->addHistory(history.m_ticket, history.m_owner, history.m_interface, "cancelled", payload);
 }
 
 void DownloadManager::cancelAll()
@@ -1958,7 +1962,6 @@ void DownloadManager::cancelAll()
 
 int DownloadManager::getJSONListOfAllDownloads(std::vector<std::string>& downloadList)
 {
-
     //walk one of the download maps via an iterator
     std::map<long, DownloadTask*>::iterator iter = m_ticketMap.begin();
     int i = 0;
@@ -2045,14 +2048,17 @@ bool DownloadManager::spaceOnFs(const std::string& path, uint64_t& spaceFreeKB, 
 
     if (::statvfs64(path.c_str(), &fs_stats) != 0) {
         //failed to execute statvfs...treat this as if there was no free space
-        LOG_DEBUG("%s: Failed to execute statvfs on %s", __FUNCTION__, path.c_str());
+        LOG_INFO_PAIRS_ONLY(LOGID_DOWNLOAD_START, 2,
+                            PMLOGKS("where", __FUNCTION__),
+                            PMLOGKS("error", strerror(errno)));
         return false;
     }
 
     if (DownloadSettings::Settings()->m_dbg_useStatfsFake) {
         fs_stats.f_bfree = DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
         LOG_DEBUG("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                  __FUNCTION__, DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes,
+                  __FUNCTION__,
+                  DownloadSettings::Settings()->m_dbg_statfsFakeFreeSizeBytes,
                   fs_stats.f_bfree);
     }
 
@@ -2135,9 +2141,9 @@ TransferTask * DownloadManager::removeTask(CURL * handle)
     }
 
     //this is a bit wasteful but prevents from having to maintain 2 copies of essentially identical code
-    if (task->m_type == DOWNLOAD_TASK)
+    if (task->m_type == TransferTaskType_DOWNLOAD)
         removeTask_dl(task->m_downloadTask->m_ticket);
-    else if (task->m_type == UPLOAD_TASK)
+    else if (task->m_type == TransferTaskType_UPLOAD)
         removeTask_ul(task->m_uploadTask->id());
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
@@ -2261,30 +2267,30 @@ int DownloadManager::clearDownloadHistoryByGlobbedOwner(const std::string& calle
 }
 
 //static
-Connection DownloadManager::connectionName2Id(const std::string& name)
+ConnectionType DownloadManager::connectionName2Id(const std::string& name)
 {
     if (name == "wired")
-        return Wired;
+        return ConnectionType_Wired;
     else if (name == "wifi")
-        return Wifi;
+        return ConnectionType_Wifi;
     else if (name == "wan")
-        return Wan;
+        return ConnectionType_Wan;
     else if (name == "btpan")
-        return Btpan;
+        return ConnectionType_Btpan;
 
-    return ANY;
+    return ConnectionType_ANY;
 }
 
 //static
-std::string DownloadManager::connectionId2Name(const Connection id)
+std::string DownloadManager::connectionId2Name(const ConnectionType id)
 {
-    if (id == Wired)
+    if (id == ConnectionType_Wired)
         return "wired";
-    if (id == Wifi)
+    if (id == ConnectionType_Wifi)
         return "wifi";
-    else if (id == Wan)
+    else if (id == ConnectionType_Wan)
         return "wan";
-    else if (id == Btpan)
+    else if (id == ConnectionType_Btpan)
         return "btpan";
 
     return "*";
@@ -2299,39 +2305,39 @@ bool DownloadManager::is1xConnection(const std::string& networkType)
     return false;
 }
 
-bool DownloadManager::isInterfaceUp(Connection connectionId)
+bool DownloadManager::isInterfaceUp(ConnectionType connectionId)
 {
     ConnectionStatus status;
     switch (connectionId) {
-    case Wired:
+    case ConnectionType_Wired:
         status = m_wiredConnectionStatus;
         break;
-    case Wifi:
+    case ConnectionType_Wifi:
         status = m_wifiConnectionStatus;
         break;
-    case Wan:
-        if (m_wanConnectionStatus == InetConnectionConnected) {
-            if (!s_allow1x && (m_wanConnectionType == WanConnection1x))
-                status = InetConnectionDisconnected;
+    case ConnectionType_Wan:
+        if (m_wanConnectionStatus == ConnectionStatus_Connected) {
+            if (!s_allow1x && (m_wanConnectionType == WanConnectionType_1x))
+                status = ConnectionStatus_Disconnected;
             else
-                status = InetConnectionConnected;
+                status = ConnectionStatus_Connected;
         } else
-            status = InetConnectionDisconnected;
+            status = ConnectionStatus_Disconnected;
         break;
-    case Btpan:
+    case ConnectionType_Btpan:
         status = m_btpanConnectionStatus;
         break;
-    case ANY:
-        return ((m_wifiConnectionStatus == InetConnectionConnected) ||
-               ((m_wanConnectionStatus == InetConnectionConnected) &&
-               ((s_allow1x) || (m_wanConnectionType != WanConnection1x))) ||
-               (m_btpanConnectionStatus == InetConnectionConnected) ||
-               (m_wiredConnectionStatus == InetConnectionConnected));
+    case ConnectionType_ANY:
+        return ((m_wifiConnectionStatus == ConnectionStatus_Connected) ||
+               ((m_wanConnectionStatus == ConnectionStatus_Connected) &&
+               ((s_allow1x) || (m_wanConnectionType != WanConnectionType_1x))) ||
+               (m_btpanConnectionStatus == ConnectionStatus_Connected) ||
+               (m_wiredConnectionStatus == ConnectionStatus_Connected));
     default:
         return false;
     }
 
-    return (status == InetConnectionConnected);
+    return (status == ConnectionStatus_Connected);
 }
 
 unsigned int DownloadManager::howManyTasksActive()
@@ -2489,7 +2495,7 @@ void DownloadManager::postUploadStatus(uint32_t id, const std::string& sourceFil
 
 bool DownloadManager::is1xConnection()
 {
-    if ((m_wanConnectionStatus == InetConnectionConnected) && (m_wanConnectionType == WanConnection1x))
+    if ((m_wanConnectionStatus == ConnectionStatus_Connected) && (m_wanConnectionType == WanConnectionType_1x))
         return true;
 
     return false;
@@ -2502,29 +2508,29 @@ bool DownloadManager::is1xDownloadAllowed()
 
 bool DownloadManager::canDownloadNow()
 {
-    bool available = (m_wifiConnectionStatus == InetConnectionConnected) || (m_wanConnectionStatus == InetConnectionConnected) || (m_btpanConnectionStatus == InetConnectionConnected)
-            || (m_wiredConnectionStatus == InetConnectionConnected);
+    bool available = (m_wifiConnectionStatus == ConnectionStatus_Connected) || (m_wanConnectionStatus == ConnectionStatus_Connected) || (m_btpanConnectionStatus == ConnectionStatus_Connected)
+            || (m_wiredConnectionStatus == ConnectionStatus_Connected);
 
     if (!available) {
         //LOG_DEBUG ("no connection available");
         return false;
     }
 
-    if (m_wiredConnectionStatus == InetConnectionConnected) {
+    if (m_wiredConnectionStatus == ConnectionStatus_Connected) {
         return true;
     }
 
-    if (m_wifiConnectionStatus == InetConnectionConnected) {
+    if (m_wifiConnectionStatus == ConnectionStatus_Connected) {
 //  LOG_DEBUG ("wifi is avail, download ok now");
         return true;
     }
 
-    if (m_wanConnectionStatus == InetConnectionConnected && (!is1xConnection() || (is1xConnection() && is1xDownloadAllowed()))) {
+    if (m_wanConnectionStatus == ConnectionStatus_Connected && (!is1xConnection() || (is1xConnection() && is1xDownloadAllowed()))) {
 //  LOG_DEBUG ("wan connection download ok now");
         return true;
     }
 
-    if (m_btpanConnectionStatus == InetConnectionConnected) {
+    if (m_btpanConnectionStatus == ConnectionStatus_Connected) {
 //  LOG_DEBUG ("btpan available, download ok now");
         return true;
     }

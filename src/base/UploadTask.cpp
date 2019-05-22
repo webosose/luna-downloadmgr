@@ -25,6 +25,8 @@
  *
  */
 
+const char* UploadTask::TRUSTED_CERT_PATH = "/var/ssl/trustedcerts";
+
 //static
 UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl, const std::string& sourcefile, const std::string& filemimepartlabel, std::vector<PostItem>& postparts,
         std::vector<std::string>& httpheaders, std::vector<kvpair>& cookies, const std::string& contenttype)
@@ -46,11 +48,11 @@ UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl, const s
     for (std::vector<PostItem>::iterator it = postparts.begin(); it != postparts.end(); ++it) {
         //curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, it->first.c_str(), CURLFORM_COPYCONTENTS,it->second.c_str(), CURLFORM_END);
 
-        if ((*it).m_type == Value) {
+        if ((*it).m_type == ItemType_Value) {
             //this is a value part...  use CURLFORM_COPYCONTENTS
             curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it).m_key.c_str(), CURLFORM_CONTENTTYPE, (*it).m_contentType.c_str(), CURLFORM_COPYCONTENTS, (*it).m_data.c_str(),
                     CURLFORM_END);
-        } else if ((*it).m_type == File) {
+        } else if ((*it).m_type == ItemType_File) {
             //this is a file part... use CURLFORM_FILE
             curl_formadd(&(p_ult->m_p_httpPostList), &last, CURLFORM_COPYNAME, (*it).m_key.c_str(), CURLFORM_CONTENTTYPE, (*it).m_contentType.c_str(), CURLFORM_FILE, (*it).m_data.c_str(), CURLFORM_END);
         }
@@ -82,7 +84,7 @@ UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl, const s
         cookiestr += it->first + std::string("=") + it->second + std::string("; ");
     }
     curl_easy_setopt(p_curl, CURLOPT_COOKIE, cookiestr.c_str());
-    curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH);
+    curl_easy_setopt(p_curl, CURLOPT_CAPATH, TRUSTED_CERT_PATH);
     curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse);
     curl_easy_setopt(p_curl, CURLOPT_WRITEDATA, p_ult);
     curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER, p_curl);
@@ -119,7 +121,7 @@ UploadTask * UploadTask::newBufferUploadTask(const std::string& targeturl, const
     // set http headers
     p_ult->setHTTPHeaders(httpheaders);
 
-    curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH);
+    curl_easy_setopt(p_curl, CURLOPT_CAPATH, TRUSTED_CERT_PATH);
     curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse);
     curl_easy_setopt(p_curl, CURLOPT_WRITEDATA, p_ult);
     curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER, p_curl);

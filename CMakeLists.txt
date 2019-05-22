@@ -90,7 +90,7 @@ set(LIBS
 target_link_libraries(${BIN_NAME} ${LIBS})
 
 # Install
-install(TARGETS ${BIN_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
+install(TARGETS ${BIN_NAME} DESTINATION ${WEBOS_INSTALL_BINDIR})
 
 webos_distro_variant_dep()
 
