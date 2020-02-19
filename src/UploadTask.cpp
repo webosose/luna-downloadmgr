@@ -76,7 +76,10 @@ UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl,const st
     else
         curl_formadd(&(p_ult->m_p_httpPostList), &last,CURLFORM_COPYNAME, filemimepartlabel.c_str(), CURLFORM_FILE, sourcefile.c_str(), CURLFORM_END);
 
-    curl_easy_setopt(p_curl, CURLOPT_HTTPPOST, (p_ult->m_p_httpPostList));
+    CURLcode rc = CURLE_OK;
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_HTTPPOST, (p_ult->m_p_httpPostList))) != CURLE_OK) {
+        LOG_DEBUG("curl set opt: CURLOPT_HTTPPOST failed [%d]\n", rc);
+    }
 
     // set http headers
     p_ult->setHTTPHeaders(httpheaders);
@@ -87,12 +90,18 @@ UploadTask * UploadTask::newFileUploadTask(const std::string& targeturl,const st
     for (std::vector<kvpair>::iterator it = cookies.begin(); it != cookies.end();++it) {
         cookiestr += it->first + std::string("=") + it->second + std::string("; ");
     }
-    curl_easy_setopt(p_curl, CURLOPT_COOKIE,cookiestr.c_str());
-    curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEDATA,p_ult);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER,p_curl);
-    curl_easy_setopt(p_curl, CURLOPT_HEADERFUNCTION, DownloadManager::cbCurlHeaderInfo);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_COOKIE,cookiestr.c_str())) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_HTTPPOST failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_CAPATH failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEFUNCTION failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEDATA,p_ult)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEDATA failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER,p_curl)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEHEADER failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_HEADERFUNCTION, DownloadManager::cbCurlHeaderInfo)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_HEADERFUNCTION failed [%d]\n", rc);
     // curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
 
@@ -118,8 +127,11 @@ UploadTask * UploadTask::newBufferUploadTask(const std::string& targeturl,const 
      * UploadTask(const std::string& url,const std::string file,const std::string& data,uint32_t id,const std::vector<kvpair> * postparts,const std::string& contenttype,CURL * p_curl); */
     UploadTask * p_ult = new UploadTask(targeturl,sourcebuffer,"",UploadTask::genNewId(),NULL,contenttype,p_curl);
 
-    curl_easy_setopt (p_ult->m_p_curlHandle, CURLOPT_POSTFIELDS, sourcebuffer.c_str());
-    curl_easy_setopt (p_ult->m_p_curlHandle, CURLOPT_POSTFIELDSIZE,sourcebuffer.length());
+    CURLcode rc = CURLE_OK;
+    if ((rc = curl_easy_setopt (p_ult->m_p_curlHandle, CURLOPT_POSTFIELDS, sourcebuffer.c_str())) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_POSTFIELDS failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt (p_ult->m_p_curlHandle, CURLOPT_POSTFIELDSIZE,sourcebuffer.length())) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_POSTFIELDSIZE failed [%d]\n", rc);
     // LOG_DEBUG ("%s: sending postfield %s with postfieldsize %d", __func__, sourcebuffer.c_str(), sourcebuffer.length());
 
     // curl_easy_setopt(p_ult->m_p_curlHandle, CURLOPT_HTTPPOST, (p_ult->m_p_httpPostList));
@@ -127,11 +139,16 @@ UploadTask * UploadTask::newBufferUploadTask(const std::string& targeturl,const 
     // set http headers
     p_ult->setHTTPHeaders(httpheaders);
 
-    curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEDATA,p_ult);
-    curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER,p_curl);
-    curl_easy_setopt(p_curl, CURLOPT_HEADERFUNCTION, DownloadManager::cbCurlHeaderInfo);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_CAPATH, DOWNLOADMANAGER_TRUSTED_CERT_PATH)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: DOWNLOADMANAGER_TRUSTED_CERT_PATH failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEFUNCTION, DownloadManager::cbUploadResponse)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEFUNCTION failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEDATA,p_ult)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEFUNCTION failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_WRITEHEADER,p_curl)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_WRITEHEADER failed [%d]\n", rc);
+    if ((rc = curl_easy_setopt(p_curl, CURLOPT_HEADERFUNCTION, DownloadManager::cbCurlHeaderInfo)) != CURLE_OK)
+        LOG_DEBUG("curl set opt: CURLOPT_HEADERFUNCTION failed [%d]\n", rc);
     // curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
 
@@ -169,9 +186,11 @@ void UploadTask::setHTTPHeaders(std::vector<std::string>& headerList)
     for (std::vector<std::string>::iterator it = headerList.begin();it != headerList.end();++it)
         m_p_curlHeaderList = curl_slist_append(m_p_curlHeaderList,(*it).c_str());
 
-    curl_easy_setopt(m_p_curlHandle, CURLOPT_HTTPHEADER, m_p_curlHeaderList);
-
-}
+    CURLcode rc = CURLE_OK;
+    if ((rc = curl_easy_setopt(m_p_curlHandle, CURLOPT_HTTPHEADER, m_p_curlHeaderList)) != CURLE_OK) {
+        LOG_DEBUG("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n", rc);
+    }
+ }
 
 UploadTask::~UploadTask()
 {

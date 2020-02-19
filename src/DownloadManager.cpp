@@ -985,7 +985,6 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
         std::string deviceIdHeader =  std::string("Device-Id: ") + deviceIdToUse;
         slist = curl_slist_append(slist,authTokenHeader.c_str());
         slist = curl_slist_append(slist,deviceIdHeader.c_str());
-        curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist);
 
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK )
             LOG_DEBUG ("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n",curlSetOptRc);
