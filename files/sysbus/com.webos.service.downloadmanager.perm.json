@@ -1,7 +1,6 @@
 {
     "com.webos.service.downloadmanager": [
         "networking.internal",
-        "tv.management",
         "system"
     ]
 }
