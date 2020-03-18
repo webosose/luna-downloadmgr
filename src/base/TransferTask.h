@@ -21,14 +21,14 @@
 #include <base/UploadTask.h>
 
 enum TransferTaskType {
-    TransferTaskType_DOWNLOAD,
-    TransferTaskType_UPLOAD
+    DOWNLOAD_TASK,
+    UPLOAD_TASK
 };
 
 class TransferTask {
 public:
     TransferTask(DownloadTask * ptr_downloadTask)
-        : m_type(TransferTaskType_DOWNLOAD),
+        : m_type(DOWNLOAD_TASK),
           m_downloadTask(ptr_downloadTask),
           m_uploadTask(0),
           m_remove(false)
@@ -36,7 +36,7 @@ public:
     }
 
     TransferTask(UploadTask * ptr_uploadTask)
-        : m_type(TransferTaskType_UPLOAD),
+        : m_type(UPLOAD_TASK),
           m_downloadTask(0),
           m_uploadTask(ptr_uploadTask),
           m_remove(false)

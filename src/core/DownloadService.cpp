@@ -210,7 +210,7 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
     std::string overrideTargetFile = "";
     std::string interfaceName = "";
     std::string strInt = "";
-    ConnectionType conn;
+    Connection conn;
     bool shouldKeepOriginalFilename = false;
     bool canHandlePause = false;
     bool autoResume = true;
@@ -226,7 +226,7 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
     pbnjson::JValue root = JUtil::parse(LSMessageGetPayload(msg), "DownloadService.download", &error);
     if (root.isNull()) {
         success = false;
-        errorCode = ConvertToString<int>(StartStatus_GENERALERROR);
+        errorCode = ConvertToString<int>(DOWNLOADMANAGER_STARTSTATUS_GENERALERROR);
         errorText = error.detail();
         goto Done;
     }
@@ -272,15 +272,15 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
 
     interfaceName = root["interface"].asString();
     if (interfaceName == "wired")
-        conn = ConnectionType_Wired;
+        conn = Wired;
     else if (interfaceName == "wifi")
-        conn = ConnectionType_Wifi;
+        conn = Wifi;
     else if (interfaceName == "wan")
-        conn = ConnectionType_Wan;
+        conn = Wan;
     else if (interfaceName == "btpan")
-        conn = ConnectionType_Btpan;
+        conn = Btpan;
     else
-        conn = ConnectionType_ANY;
+        conn = ANY;
 
     //try and start the download
 
@@ -306,7 +306,7 @@ bool DownloadManager::cbDownload(LSHandle* lshandle, LSMessage *msg, void *user_
 
     if (DownloadManager::instance().getDownloadTaskCopy(ticket_id, task) == false) {
         //download task not found!
-        errorCode = ConvertToString<int>(StartStatus_GENERALERROR);
+        errorCode = ConvertToString<int>(DOWNLOADMANAGER_STARTSTATUS_GENERALERROR);
         errorText = "download task not found after start called";
         success = false;
         goto Done;
@@ -400,7 +400,7 @@ bool DownloadManager::cbResumeDownload(LSHandle* lshandle, LSMessage *message, v
 
     pbnjson::JValue root = JUtil::parse(str, "DownloadService.resumeDownload", &error);
     if (root.isNull()) {
-        errorCode = ConvertToString<int>(ResumeStatus_GENERALERROR);
+        errorCode = ConvertToString<int>(DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR);
         errorText = error.detail();
         goto Done_cbResumeDownload;
     }
@@ -427,17 +427,17 @@ bool DownloadManager::cbResumeDownload(LSHandle* lshandle, LSMessage *message, v
 
     errorCode = ConvertToString<int>(rc);
     switch (rc) {
-    case ResumeStatus_QUEUEFULL:
+    case DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL:
         errorText = "Download queue is full; cannot resume at this time";
         break;
-    case ResumeStatus_HISTORYCORRUPT:
-    case ResumeStatus_NOTDOWNLOAD:
-    case ResumeStatus_NOTINTERRUPTED:
-    case ResumeStatus_NOTINHISTORY:
-    case ResumeStatus_GENERALERROR:
+    case DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT:
+    case DOWNLOADMANAGER_RESUMESTATUS_NOTDOWNLOAD:
+    case DOWNLOADMANAGER_RESUMESTATUS_NOTINTERRUPTED:
+    case DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY:
+    case DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR:
         errorText = "Ticket provided does not correspond to an interrupted transfer in history";
         break;
-    case ResumeStatus_CANNOTACCESSTEMP:
+    case DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP:
         errorText = "Cannot access temporary file for append";
         break;
     default:
@@ -509,7 +509,7 @@ bool DownloadManager::cbPauseDownload(LSHandle* lshandle, LSMessage *message, vo
 
     pbnjson::JValue root = JUtil::parse(str, "DownloadService.pauseDownload", &error);
     if (root.isNull()) {
-        errorCode = ConvertToString<int>(PauseStatus_GENERALERROR);
+        errorCode = ConvertToString<int>(DOWNLOADMANAGER_PAUSESTATUS_GENERALERROR);
         errorText = error.detail();
         goto Done_cbPauseDownload;
     }
@@ -520,7 +520,7 @@ bool DownloadManager::cbPauseDownload(LSHandle* lshandle, LSMessage *message, vo
     rc = DownloadManager::instance().pauseDownload(ticket);
 
     switch (rc) {
-    case PauseStatus_NOSUCHDOWNLOADTASK:
+    case DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK:
         errorCode = ConvertToString<int>(rc);
         errorText = "Ticket provided does not correspond to a downloading transfer";
         break;
@@ -607,7 +607,7 @@ Done:
         //to retain compatibility with older clients, inject some status here
         repleyJsonObj.put("aborted", true);
         repleyJsonObj.put("completed", false);
-        repleyJsonObj.put("completionStatusCode", CompletionStatus_CANCELLED);
+        repleyJsonObj.put("completionStatusCode", DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED);
     }
     if (!LSMessageReply(lshandle, msg, JUtil::toSimpleString(repleyJsonObj).c_str(), &lserror)) {
         LSErrorPrint(&lserror, stderr);
@@ -941,7 +941,7 @@ bool DownloadManager::cbClearDownloadHistory(LSHandle * lshandle, LSMessage *msg
 
     pbnjson::JValue root = JUtil::parse(LSMessageGetPayload(msg), "DownloadService.clearHistory", &error);
     if (root.isNull()) {
-        errorCode = HistoryStatus_GENERALERROR;
+        errorCode = DOWNLOADHISTORYDB_HISTORYSTATUS_GENERALERROR;
         errorText = error.detail();
         goto Done;
     }
@@ -954,10 +954,10 @@ bool DownloadManager::cbClearDownloadHistory(LSHandle * lshandle, LSMessage *msg
     }
 
     switch (errorCode) {
-    case HistoryStatus_HISTORYERROR:
+    case DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR:
         errorText = std::string("Internal error");
         break;
-    case HistoryStatus_NOTINHISTORY:
+    case DOWNLOADHISTORYDB_HISTORYSTATUS_NOTINHISTORY:
         errorText = std::string("Fail to find owner");
         break;
     }
@@ -1289,7 +1289,7 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
     JUtil::Error error;
     pbnjson::JValue root = JUtil::parse(LSMessageGetPayload(msg), "DownloadService.upload", &error);
     if (root.isNull()) {
-        errorCode = UploadStatus_GENERALERROR;
+        errorCode = DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR;
         errorText = error.detail();
         goto Done_cbUp;
     }
@@ -1313,7 +1313,7 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
 
     // check URL parameter validity
     if (!boost::regex_match(targetUrl, regURL)) {
-        errorCode = UploadStatus_INVALIDPARAM;
+        errorCode = DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM;
         errorText = "Invalid URL";
         goto Done_cbUp;
     }
@@ -1321,7 +1321,7 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
     // check MIME parameter validity
     if (root.hasKey("contentType")) {
         if (!boost::regex_match(contentType, regMIME)) {
-            errorCode = UploadStatus_INVALIDPARAM;
+            errorCode = DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM;
             errorText = "Invalid MIME type";
             goto Done_cbUp;
         }
@@ -1342,13 +1342,13 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
             // check MIME parameter validity in "postParameters"
             if (jo.hasKey("contentType")) {
                 if (!boost::regex_match(contentType, regMIME)) {
-                    errorCode = UploadStatus_INVALIDPARAM;
+                    errorCode = DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM;
                     errorText = "Invalid MIME type";
                     goto Done_cbUp;
                 }
             }
 
-            postHeaders.push_back(PostItem(key, data, ItemType_Value, contentType));
+            postHeaders.push_back(PostItem(key, data, Value, contentType));
         }
     }
 
@@ -1373,7 +1373,7 @@ bool DownloadManager::cbUpload(LSHandle* lshandle, LSMessage* msg, void* user_da
 
     uploadId = DownloadManager::instance().uploadPOSTFile(inputFile, targetUrl, filePostLabel, postHeaders, httpHeaders, cookies, contentType);
     if (uploadId == 0) {
-        errorCode = UploadStatus_GENERALERROR;
+        errorCode = DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR;
         errorText = "Failed to start upload";
         goto Done_cbUp;
     }
@@ -1498,15 +1498,15 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
                 onInternet = "no";
 
             if (state == "connected" && onInternet == "yes") {
-                dlManager.m_wifiConnectionStatus = ConnectionStatus_Connected;
+                dlManager.m_wifiConnectionStatus = InetConnectionConnected;
                 dlManager.m_wifiInterfaceName = topLevelObject["interfaceName"].asString();
                 LOG_DEBUG("CONNECTION-STATUS: wifi connected");
 
-                if (wifiConnectionStatusPrevious == ConnectionStatus_Disconnected)
+                if (wifiConnectionStatusPrevious == InetConnectionDisconnected)
                     wifiWentUp = true;
             } else {
-                dlManager.m_wifiConnectionStatus = ConnectionStatus_Disconnected;
-                if (wifiConnectionStatusPrevious == ConnectionStatus_Connected)
+                dlManager.m_wifiConnectionStatus = InetConnectionDisconnected;
+                if (wifiConnectionStatusPrevious == InetConnectionConnected)
                     wifiWentDown = true;
                 LOG_DEBUG("CONNECTION-STATUS: wifi disconnected");
             }
@@ -1522,15 +1522,15 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
                 onInternet = "no";
 
             if (state == "connected" && onInternet == "yes") {
-                dlManager.m_wiredConnectionStatus = ConnectionStatus_Connected;
+                dlManager.m_wiredConnectionStatus = InetConnectionConnected;
                 dlManager.m_wiredInterfaceName = topLevelObject["interfaceName"].asString();
                 LOG_DEBUG("CONNECTION-STATUS: wired connected");
 
-                if (wiredConnectionStatusPrevious == ConnectionStatus_Disconnected)
+                if (wiredConnectionStatusPrevious == InetConnectionDisconnected)
                     wiredWentUp = true;
             } else {
-                dlManager.m_wiredConnectionStatus = ConnectionStatus_Disconnected;
-                if (wiredConnectionStatusPrevious == ConnectionStatus_Connected)
+                dlManager.m_wiredConnectionStatus = InetConnectionDisconnected;
+                if (wiredConnectionStatusPrevious == InetConnectionConnected)
                     wiredWentDown = true;
                 LOG_DEBUG("CONNECTION-STATUS: wired disconnected");
             }
@@ -1549,18 +1549,18 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
 
             if ("default" == contextObject["name"].asString() && contextObject["connected"].asBool() && contextObject["onInternet"].asBool()) {
                 defaultServiceConnected = true;
-                dlManager.m_wanConnectionStatus = ConnectionStatus_Connected;
+                dlManager.m_wanConnectionStatus = InetConnectionConnected;
                 dlManager.m_wanInterfaceName = contextObject["interfaceName"].asString();
                 LOG_DEBUG("CONNECTION-STATUS: wan connected");
 
-                if (wanConnectionStatusPrevious == ConnectionStatus_Disconnected)
+                if (wanConnectionStatusPrevious == InetConnectionDisconnected)
                     wanWentUp = true;
                 break;
             }
         }
         if (!defaultServiceConnected) {
-            dlManager.m_wanConnectionStatus = ConnectionStatus_Disconnected;
-            if (wanConnectionStatusPrevious == ConnectionStatus_Connected)
+            dlManager.m_wanConnectionStatus = InetConnectionDisconnected;
+            if (wanConnectionStatusPrevious == InetConnectionConnected)
                 wanWentDown = true;
             LOG_DEBUG("CONNECTION-STATUS: wan disconnected");
         }
@@ -1571,52 +1571,52 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
         std::string state = topLevelObject["state"].asString();
         if (topLevelObject.hasKey("state")) {
             if (state == "connected") {
-                dlManager.m_btpanConnectionStatus = ConnectionStatus_Connected;
+                dlManager.m_btpanConnectionStatus = InetConnectionConnected;
                 LOG_DEBUG("CONNECTION-STATUS: btpan connected");
                 std::string interfaceName = topLevelObject["interfaceName"].asString();
                 if (topLevelObject.hasKey("interfaceName")) {
                     dlManager.m_btpanInterfaceName = interfaceName;
                 }
-                if (btpanConnectionStatusPrevious == ConnectionStatus_Disconnected)
+                if (btpanConnectionStatusPrevious == InetConnectionDisconnected)
                     btpanWentUp = true;
             } else if (state == "disconnected") {
-                dlManager.m_btpanConnectionStatus = ConnectionStatus_Disconnected;
+                dlManager.m_btpanConnectionStatus = InetConnectionDisconnected;
                 LOG_DEBUG("CONNECTION-STATUS: btpan disconnected");
-                if (btpanConnectionStatusPrevious == ConnectionStatus_Connected)
+                if (btpanConnectionStatusPrevious == InetConnectionConnected)
                     btpanWentDown = true;
             }
         }
     }
 
-    if (dlManager.m_wiredConnectionStatus == ConnectionStatus_Connected) {
-        if (dlManager.m_wifiConnectionStatus == ConnectionStatus_Connected) {
+    if (dlManager.m_wiredConnectionStatus == InetConnectionConnected) {
+        if (dlManager.m_wifiConnectionStatus == InetConnectionConnected) {
             LOG_DEBUG("Wired and wifi are both connected. Treat wifi is disconnected.");
-            dlManager.m_wifiConnectionStatus = ConnectionStatus_Disconnected;
-            if (wifiConnectionStatusPrevious == ConnectionStatus_Connected)
+            dlManager.m_wifiConnectionStatus = InetConnectionDisconnected;
+            if (wifiConnectionStatusPrevious == InetConnectionConnected)
                 wifiWentDown = true;
             wifiWentUp = false;
         }
-        if (dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) {
+        if (dlManager.m_wanConnectionStatus == InetConnectionConnected) {
             LOG_DEBUG("Wired and wan are both connected. Treat wan is disconnected.");
-            dlManager.m_wanConnectionStatus = ConnectionStatus_Disconnected;
-            if (wanConnectionStatusPrevious == ConnectionStatus_Connected)
+            dlManager.m_wanConnectionStatus = InetConnectionDisconnected;
+            if (wanConnectionStatusPrevious == InetConnectionConnected)
                 wanWentDown = true;
             wanWentUp = false;
         }
     }
-    if (dlManager.m_wifiConnectionStatus == ConnectionStatus_Connected) {
-        if (dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) {
+    if (dlManager.m_wifiConnectionStatus == InetConnectionConnected) {
+        if (dlManager.m_wanConnectionStatus == InetConnectionConnected) {
             LOG_DEBUG("Wifi and wan are both connected. Treat wan is disconnected.");
-            dlManager.m_wanConnectionStatus = ConnectionStatus_Disconnected;
-            if (wanConnectionStatusPrevious == ConnectionStatus_Connected)
+            dlManager.m_wanConnectionStatus = InetConnectionDisconnected;
+            if (wanConnectionStatusPrevious == InetConnectionConnected)
                 wanWentDown = true;
             wanWentUp = false;
         }
     }
 
-    LOG_DEBUG("[CONNECTION-STATUS]: wired - %s, wifi - %s, wan - %s, btpan - %s ", (dlManager.m_wiredConnectionStatus == ConnectionStatus_Connected) ? "connected" : "disconnected",
-            (dlManager.m_wifiConnectionStatus == ConnectionStatus_Connected) ? "connected" : "disconnected", (dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) ? "connected" : "disconnected",
-            (dlManager.m_btpanConnectionStatus == ConnectionStatus_Connected) ? "connected" : "disconnected");
+    LOG_DEBUG("[CONNECTION-STATUS]: wired - %s, wifi - %s, wan - %s, btpan - %s ", (dlManager.m_wiredConnectionStatus == InetConnectionConnected) ? "connected" : "disconnected",
+            (dlManager.m_wifiConnectionStatus == InetConnectionConnected) ? "connected" : "disconnected", (dlManager.m_wanConnectionStatus == InetConnectionConnected) ? "connected" : "disconnected",
+            (dlManager.m_btpanConnectionStatus == InetConnectionConnected) ? "connected" : "disconnected");
 
     LOG_DEBUG("[CONNECTION-STATUS]: allow1x is %s", (s_allow1x ? "TRUE" : "FALSE"));
 
@@ -1628,11 +1628,11 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
 
     bool autoResume = DownloadSettings::Settings()->m_autoResume;
     bool resumeAggression = DownloadSettings::Settings()->m_resumeAggression;
-    bool previouslyAvailable = (wifiConnectionStatusPrevious == ConnectionStatus_Connected) || (wanConnectionStatusPrevious == ConnectionStatus_Connected)
-            || (btpanConnectionStatusPrevious == ConnectionStatus_Connected) || (wiredConnectionStatusPrevious == ConnectionStatus_Connected);
-    bool available = (dlManager.m_wifiConnectionStatus == ConnectionStatus_Connected)
-            || ((dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) && (dlManager.m_wanConnectionType == WanConnectionType_HS || s_allow1x))
-            || (dlManager.m_btpanConnectionStatus == ConnectionStatus_Connected) || (dlManager.m_wiredConnectionStatus == ConnectionStatus_Connected);
+    bool previouslyAvailable = (wifiConnectionStatusPrevious == InetConnectionConnected) || (wanConnectionStatusPrevious == InetConnectionConnected)
+            || (btpanConnectionStatusPrevious == InetConnectionConnected) || (wiredConnectionStatusPrevious == InetConnectionConnected);
+    bool available = (dlManager.m_wifiConnectionStatus == InetConnectionConnected)
+            || ((dlManager.m_wanConnectionStatus == InetConnectionConnected) && (dlManager.m_wanConnectionType == WanConnectionHS || s_allow1x))
+            || (dlManager.m_btpanConnectionStatus == InetConnectionConnected) || (dlManager.m_wiredConnectionStatus == InetConnectionConnected);
 
     //if nothing is available, but something was previously, then just pause all //TODO: this won't be necessary if interface:ANY is removed and all interfaces are explicit
     if (previouslyAvailable && !available) {
@@ -1640,54 +1640,54 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
         return true;
     }
 
-    ConnectionType altInterface = ConnectionType_ANY;
-    if (dlManager.m_wiredConnectionStatus == ConnectionStatus_Connected)
-        altInterface = ConnectionType_Wired;
-    else if (dlManager.m_wifiConnectionStatus == ConnectionStatus_Connected)                    //in precedence order
-        altInterface = ConnectionType_Wifi;
-    else if ((dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) && (s_allow1x || !(dlManager.m_wanConnectionType == WanConnectionType_1x)))
-        altInterface = ConnectionType_Wan;
-    else if (dlManager.m_btpanConnectionStatus == ConnectionStatus_Connected)
-        altInterface = ConnectionType_Btpan;
+    Connection altInterface = ANY;
+    if (dlManager.m_wiredConnectionStatus == InetConnectionConnected)
+        altInterface = Wired;
+    else if (dlManager.m_wifiConnectionStatus == InetConnectionConnected)                    //in precedence order
+        altInterface = Wifi;
+    else if ((dlManager.m_wanConnectionStatus == InetConnectionConnected) && (s_allow1x || !(dlManager.m_wanConnectionType == WanConnection1x)))
+        altInterface = Wan;
+    else if (dlManager.m_btpanConnectionStatus == InetConnectionConnected)
+        altInterface = Btpan;
 
     if (wiredWentDown) {
-        dlManager.pauseAll(ConnectionType_Wired);
+        dlManager.pauseAll(Wired);
     } else if (wiredWentUp && autoResume) {
-        dlManager.resumeAll(ConnectionType_Wired, true);
-        dlManager.resumeAll(ConnectionType_ANY, true);
+        dlManager.resumeAll(Wired, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (wifiWentDown) {
-        dlManager.pauseAll(ConnectionType_Wifi);
+        dlManager.pauseAll(Wifi);
     } else if (wifiWentUp && autoResume) {
-        dlManager.resumeAll(ConnectionType_Wifi, true);
-        dlManager.resumeAll(ConnectionType_ANY, true);
+        dlManager.resumeAll(Wifi, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (wanWentDown) {
-        dlManager.pauseAll(ConnectionType_Wan);
-    } else if (wanWentUp && autoResume && (s_allow1x || !(dlManager.m_wanConnectionType == WanConnectionType_1x))) {
-        dlManager.resumeAll(ConnectionType_Wan, true);
-        dlManager.resumeAll(ConnectionType_ANY, true);
+        dlManager.pauseAll(Wan);
+    } else if (wanWentUp && autoResume && (s_allow1x || !(dlManager.m_wanConnectionType == WanConnection1x))) {
+        dlManager.resumeAll(Wan, true);
+        dlManager.resumeAll(ANY, true);
     }
     if (btpanWentDown) {
-        dlManager.pauseAll(ConnectionType_Btpan);
+        dlManager.pauseAll(Btpan);
     } else if (btpanWentUp && autoResume) {
-        dlManager.resumeAll(ConnectionType_Btpan, true);
-        dlManager.resumeAll(ConnectionType_ANY, true);
+        dlManager.resumeAll(Btpan, true);
+        dlManager.resumeAll(ANY, true);
     }
 
     if (autoResume && available && resumeAggression) {
-        if (dlManager.m_wiredConnectionStatus == ConnectionStatus_Disconnected) {
-            dlManager.resumeMultipleOnAlternateInterface(ConnectionType_Wired, altInterface, true);
+        if (dlManager.m_wiredConnectionStatus == InetConnectionDisconnected) {
+            dlManager.resumeMultipleOnAlternateInterface(Wired, altInterface, true);
         }
-        if (dlManager.m_wifiConnectionStatus == ConnectionStatus_Disconnected) {
-            dlManager.resumeMultipleOnAlternateInterface(ConnectionType_Wifi, altInterface, true);
+        if (dlManager.m_wifiConnectionStatus == InetConnectionDisconnected) {
+            dlManager.resumeMultipleOnAlternateInterface(Wifi, altInterface, true);
         }
-        if ((dlManager.m_wanConnectionStatus == ConnectionStatus_Disconnected) ||
-            ((dlManager.m_wanConnectionStatus == ConnectionStatus_Connected) && !s_allow1x && (dlManager.m_wanConnectionType == WanConnectionType_1x))) {
-            dlManager.resumeMultipleOnAlternateInterface(ConnectionType_Wan, altInterface, true);
+        if ((dlManager.m_wanConnectionStatus == InetConnectionDisconnected) ||
+            ((dlManager.m_wanConnectionStatus == InetConnectionConnected) && !s_allow1x && (dlManager.m_wanConnectionType == WanConnection1x))) {
+            dlManager.resumeMultipleOnAlternateInterface(Wan, altInterface, true);
         }
-        if (dlManager.m_btpanConnectionStatus == ConnectionStatus_Disconnected) {
-            dlManager.resumeMultipleOnAlternateInterface(ConnectionType_Btpan, altInterface, true);
+        if (dlManager.m_btpanConnectionStatus == InetConnectionDisconnected) {
+            dlManager.resumeMultipleOnAlternateInterface(Btpan, altInterface, true);
         }
     }
 
@@ -1695,13 +1695,13 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
     if ((wiredWentUp) && (resumeAggression)) {
         LOG_DEBUG("CONNECTION-STATUS: [PERFORMANCE]: swapping all active to Wired");
         //swap all active transfers to wired
-        if (dlManager.swapAllActiveToInterface(ConnectionType_Wired) != SWAPALLTOIF_SUCCESS) {
+        if (dlManager.swapAllActiveToInterface(Wired) != SWAPALLTOIF_SUCCESS) {
             LOG_DEBUG("CONNECTION-STATUS: [PERFORMANCE]: <ERROR> swapping all active to Wired had at least 1 failure");
         }
     } else if ((wifiWentUp) && (resumeAggression)) {
         LOG_DEBUG("CONNECTION-STATUS: [PERFORMANCE]: swapping all active to Wifi");
         //swap all active transfers to wifi
-        if (dlManager.swapAllActiveToInterface(ConnectionType_Wifi) != SWAPALLTOIF_SUCCESS) {
+        if (dlManager.swapAllActiveToInterface(Wifi) != SWAPALLTOIF_SUCCESS) {
             LOG_DEBUG("CONNECTION-STATUS: [PERFORMANCE]: <ERROR> swapping all active to Wifi had at least 1 failure");
         }
     }

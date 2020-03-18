@@ -681,13 +681,13 @@ CorruptDb:
 int DownloadHistoryDb::clear()
 {
     if (!m_dlDb)
-        return HistoryStatus_HISTORYERROR;
+        return DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR;
 
     (void) sqlite3_exec(m_dlDb, "DROP TABLE DownloadHistory", NULL, NULL, NULL);
 
     checkTableConsistency();        //this will recreate it
 
-    return HistoryStatus_OK;
+    return DOWNLOADHISTORYDB_HISTORYSTATUS_OK;
 }
 
 void DownloadHistoryDb::clearByTicket(const unsigned long ticket)
@@ -737,21 +737,21 @@ int DownloadHistoryDb::clearByGlobbedOwner(const std::string& caller)
     int rc = 0;
 
     if (!m_dlDb)
-        return HistoryStatus_HISTORYERROR;
+        return DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR;
 
     queryStr = sqlite3_mprintf("DELETE FROM DownloadHistory WHERE owner GLOB '%q*'", caller.c_str());
 
     if (!queryStr) {
-        rc = HistoryStatus_HISTORYERROR;
+        rc = DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR;
         goto Done_clearByGlobbedOwner;
     }
 
     (void) sqlite3_exec(m_dlDb, queryStr, NULL, NULL, NULL);
 
     if (sqlite3_changes(m_dlDb) != 0)
-        rc = HistoryStatus_OK;
+        rc = DOWNLOADHISTORYDB_HISTORYSTATUS_OK;
     else
-        rc = HistoryStatus_NOTINHISTORY;
+        rc = DOWNLOADHISTORYDB_HISTORYSTATUS_NOTINHISTORY;
 
 Done_clearByGlobbedOwner:
 

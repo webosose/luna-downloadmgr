@@ -20,9 +20,9 @@
 #include <iostream>
 
 enum ItemType {
-    ItemType_File,
-    ItemType_Value,
-    ItemType_Buffer
+    File,
+    Value,
+    Buffer
 };
 
 /*

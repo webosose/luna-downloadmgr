@@ -29,7 +29,7 @@ DownloadTask::DownloadTask()
       m_bytesTotal(0),
       m_rangeSpecified(std::pair<uint64_t, uint64_t>(0, 0)),
       m_lastUpdateAt(0),
-      m_updateInterval(DownloadManager::UPDATE_INTERVAL),
+      m_updateInterval(DOWNLOADMANAGER_UPDATEINTERVAL),
       m_curlDesc(0),
       m_fp(0),
       m_isQueued(false),
@@ -118,13 +118,13 @@ pbnjson::JValue DownloadTask::toJSON()
 void DownloadTask::setUpdateInterval(uint64_t interval)
 {
     if (interval == 0) {
-        if (m_bytesTotal > DownloadManager::UPDATE_INTERVAL * DownloadManager::UPDATE_NUM)
-            m_updateInterval = m_bytesTotal / DownloadManager::UPDATE_NUM;
+        if (m_bytesTotal > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
+            m_updateInterval = m_bytesTotal / DOWNLOADMANAGER_UPDATENUM;
         else
-            m_updateInterval = DownloadManager::UPDATE_INTERVAL;
+            m_updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL;
     } else
         m_updateInterval = interval;
 
-    if (m_updateInterval > DownloadManager::UPDATE_INTERVAL * DownloadManager::UPDATE_NUM)
-        m_updateInterval = DownloadManager::UPDATE_INTERVAL * DownloadManager::UPDATE_NUM;
+    if (m_updateInterval > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
+        m_updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM;
 }

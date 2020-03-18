@@ -34,51 +34,48 @@
 
 #include "../external/glibcurl.h"
 
-enum StartStatus {
-    StartStatus_GENERALERROR = -1,
-    StartStatus_FILEDOESNOTEXIST = -2,
-    StartStatus_QUEUEFULL = -3,
-    StartStatus_FILESYSTEMFULL = -4,
-    StartStatus_CURLERROR = -5,
-    StartStatus_NOSUITABLEINTERFACE = -6,
-    StartStatus_FAILEDSECURITYCHECK = -7
-};
+#define DOWNLOADMANAGER_DLBUFFERSIZE                        1024*512
+#define DOWNLOADMANAGER_UPDATEINTERVAL                      1024*100
+#define DOWNLOADMANAGER_UPDATENUM                           20
+#define DOWNLOADMANAGER_ERRORTHRESHOLD                      10
 
-enum CompletionStatus {
-    CompletionStatus_GENERALERROR = -1,
-    CompletionStatus_CONNECTTIMEOUT =-2,
-    CompletionStatus_FILECORRUPT = -3,
-    CompletionStatus_FILESYSTEMERROR = -4,
-    CompletionStatus_HTTPERROR = -5,
-    CompletionStatus_WRITEERROR = -6,
-    CompletionStatus_INTERRUPTED = 11,
-    CompletionStatus_CANCELLED = 12
-};
+#define DOWNLOADMANAGER_TRUSTED_CERT_PATH                   "/var/ssl/trustedcerts"
 
-enum ResumeStatus {
-    ResumeStatus_GENERALERROR = 0,
-    ResumeStatus_NOTINHISTORY = -1,
-    ResumeStatus_NOTINTERRUPTED = -2,
-    ResumeStatus_NOTDOWNLOAD = -3,
-    ResumeStatus_QUEUEFULL = -4,
-    ResumeStatus_HISTORYCORRUPT = -5,
-    ResumeStatus_CANNOTACCESSTEMP = -6,
-    ResumeStatus_INTERFACEDOWN = -7,
-    ResumeStatus_FILESYSTEMFULL = -8,
-    ResumeStatus_OK = 1
-};
+#define DOWNLOADMANAGER_STARTSTATUS_GENERALERROR            -1
+#define DOWNLOADMANAGER_STARTSTATUS_FILEDOESNOTEXIST        -2
+#define DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL               -3
+#define DOWNLOADMANAGER_STARTSTATUS_FILESYSTEMFULL          -4
+#define DOWNLOADMANAGER_STARTSTATUS_CURLERROR               -5
+#define DOWNLOADMANAGER_STARTSTATUS_NOSUITABLEINTERFACE     -6
+#define DOWNLOADMANAGER_STARTSTATUS_FAILEDSECURITYCHECK     -7
 
-enum PauseStatus {
-    PauseStatus_GENERALERROR = 0,
-    PauseStatus_NOSUCHDOWNLOADTASK = -1,
-    PauseStatus_OK = 1
-};
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_GENERALERROR       -1
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_CONNECTTIMEOUT     -2
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_FILECORRUPT        -3
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR    -4
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_HTTPERROR          -5
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_WRITEERROR         -6
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_INTERRUPTED        11
+#define DOWNLOADMANAGER_COMPLETIONSTATUS_CANCELLED          12
 
-enum UploadStatus {
-    UploadStatus_OK = 0,
-    UploadStatus_GENERALERROR = 1,
-    UploadStatus_INVALIDPARAM = 2
-};
+#define DOWNLOADMANAGER_RESUMESTATUS_GENERALERROR            0
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTINHISTORY           -1
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTINTERRUPTED         -2
+#define DOWNLOADMANAGER_RESUMESTATUS_NOTDOWNLOAD            -3
+#define DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL              -4
+#define DOWNLOADMANAGER_RESUMESTATUS_HISTORYCORRUPT         -5
+#define DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP       -6
+#define DOWNLOADMANAGER_RESUMESTATUS_INTERFACEDOWN          -7
+#define DOWNLOADMANAGER_RESUMESTATUS_FILESYSTEMFULL         -8
+#define DOWNLOADMANAGER_RESUMESTATUS_OK                      1
+
+#define DOWNLOADMANAGER_PAUSESTATUS_GENERALERROR             0
+#define DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK      -1
+#define DOWNLOADMANAGER_PAUSESTATUS_OK                       1
+
+#define DOWNLOADMANAGER_UPLOADSTATUS_OK                      0
+#define DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR            1
+#define DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM            2
 
 #define SWAPTOIF_ERROR_INVALIDIF                            -1
 #define SWAPTOIF_ERROR_NOSUCHTICKET                         -2
@@ -93,31 +90,28 @@ enum {
 };
 
 enum ConnectionStatus {
-    ConnectionStatus_Unknown,
-    ConnectionStatus_Connected,
-    ConnectionStatus_Disconnected
+    InetConnectionUnknownState,
+    InetConnectionConnected,
+    InetConnectionDisconnected
 };
 
 enum WanConnectionType {
-    WanConnectionType_Unknown,
-    WanConnectionType_1x,
-    WanConnectionType_HS
+    WanConnectionUnknown,
+    WanConnection1x,
+    WanConnectionHS
 };
 
-enum ConnectionType {
-    ConnectionType_ANY,
-    ConnectionType_Wifi,
-    ConnectionType_Wan,
-    ConnectionType_Btpan,
-    ConnectionType_Wired
+enum Connection {
+    ANY,
+    Wifi,
+    Wan,
+    Btpan,
+    Wired
 };
 
 class DownloadManager: public Singleton<DownloadManager> {
 friend class Singleton<DownloadManager> ;
 public:
-    static const int UPDATE_INTERVAL;
-    static const int UPDATE_NUM;
-
     unsigned long generateNewTicket();
 
     int download(const std::string& caller,
@@ -129,7 +123,7 @@ public:
                  bool keepOriginalFilenameOnRedirect,
                  const std::string& authToken,
                  const std::string& deviceId,
-                 ConnectionType interface,
+                 Connection interface,
                  bool canHandlePause,
                  bool autoResume,
                  bool appendTargetFile,
@@ -141,15 +135,15 @@ public:
     int resumeDownload(const DownloadHistory& history, bool autoResume, std::string& r_err);
     int resumeDownload(const DownloadHistory& history, bool autoResume, const std::string& authToken, const std::string& deviceId, std::string& r_err);
     int resumeAll();
-    int resumeAll(ConnectionType interface, bool autoResume);
-    int resumeDownloadOnAlternateInterface(DownloadHistory& history, ConnectionType newInterface, bool autoResume);
-    int resumeMultipleOnAlternateInterface(ConnectionType oldInterface, ConnectionType newInterface, bool autoResume);
+    int resumeAll(Connection interface, bool autoResume);
+    int resumeDownloadOnAlternateInterface(DownloadHistory& history, Connection newInterface, bool autoResume);
+    int resumeMultipleOnAlternateInterface(Connection oldInterface, Connection newInterface, bool autoResume);
     int pauseDownload(const unsigned long ticket, bool allowQueuedToStart = true);
     int pauseAll();
-    int pauseAll(ConnectionType interface);
+    int pauseAll(Connection interface);
 
-    int swapToInterface(const unsigned long int ticket, const ConnectionType newInterface);
-    int swapAllActiveToInterface(const ConnectionType newInterface);
+    int swapToInterface(const unsigned long int ticket, const Connection newInterface);
+    int swapAllActiveToInterface(const Connection newInterface);
 
     uint32_t uploadPOSTFile(const std::string& file, const std::string& url, const std::string& filePostLabel, std::vector<PostItem>& postHeaders, std::vector<std::string>& httpHeaders,
             std::vector<kvpair>& cookies, const std::string& contentType);
@@ -171,10 +165,10 @@ public:
     std::string getDownloadPath();
     std::string getAltIpkDownloadPath();
 
-    static ConnectionType connectionName2Id(const std::string& name);
-    static std::string connectionId2Name(const ConnectionType id);
+    static Connection connectionName2Id(const std::string& name);
+    static std::string connectionId2Name(const Connection id);
     static bool is1xConnection(const std::string& networkType);
-    bool isInterfaceUp(ConnectionType connectionId);
+    bool isInterfaceUp(Connection connectionId);
 
     static bool spaceCheckOnFs(const std::string& path, uint64_t thresholdKB = 1024);
     static bool spaceOnFs(const std::string& path, uint64_t& spaceFreeKB, uint64_t& spaceTotalKB);
@@ -237,6 +231,7 @@ public:
     bool init();
 
 private:
+
     void startService();
     void stopService();
 
@@ -244,9 +239,6 @@ private:
     bool msmProgress(LSMessage* message);
     bool msmEntry(LSMessage* message);
     bool msmFscking(LSMessage* message);
-
-    static const int DOWNLOAD_BUFFER_SIZE;
-    static const int ERROR_THRESHOLD;
 
     std::string m_downloadPath;
     std::string m_userDiskRootPath;
