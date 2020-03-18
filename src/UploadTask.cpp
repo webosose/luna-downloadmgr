@@ -14,9 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <base/UploadTask.h>
-#include <core/DownloadManager.h>
+#include "UploadTask.h"
 #include <stdlib.h>
+#include "DownloadManager.h"
 
 // 0 (zero) is an INVALID upload id...
 uint32_t UploadTask::s_genid = 1;

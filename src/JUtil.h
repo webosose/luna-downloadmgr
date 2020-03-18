@@ -18,9 +18,9 @@
 #define JUTIL_H
 
 #include <pbnjson.hpp>
-#include <util/Singleton.hpp>
 #include <string>
 #include <map>
+#include <Singleton.hpp>
 
 //! List of utilites for pbnjson
 class JUtil: public Singleton<JUtil> {

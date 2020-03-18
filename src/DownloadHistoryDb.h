@@ -14,11 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef CORE_DOWNLOADHISTORYDB_H_
-#define CORE_DOWNLOADHISTORYDB_H_
+#ifndef DOWNLOADHISTORYDB_H_
+#define DOWNLOADHISTORYDB_H_
 
 #include <string>
-#include <vector>
 #include <sqlite3.h>
 
 #define     DOWNLOADHISTORYDB_HISTORYSTATUS_OK                    0
@@ -126,4 +125,4 @@ private:
     sqlite3* m_dlDb;
 };
 
-#endif /*CORE_DOWNLOADHISTORYDB_H_*/
+#endif /*DOWNLOADHISTORYDB_H_*/

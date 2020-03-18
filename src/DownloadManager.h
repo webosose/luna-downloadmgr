@@ -17,12 +17,10 @@
 #ifndef __DownloadManager_h__
 #define __DownloadManager_h__
 
-#include <base/TransferTask.h>
-#include <core/DownloadHistoryDb.h>
-#include <core/Watchdog.h>
 #include <list>
 #include <string>
 #include <map>
+#include "glibcurl.h"
 #include <glib.h>
 #include <sqlite3.h>
 #include <vector>
@@ -30,9 +28,11 @@
 #include <utility>
 
 #include <luna-service2/lunaservice.h>
-#include <util/Singleton.hpp>
 
-#include "../external/glibcurl.h"
+#include "TransferTask.h"
+#include "DownloadHistoryDb.h"
+#include "Watchdog.h"
+#include "Singleton.hpp"
 
 #define     DOWNLOADMANAGER_DLBUFFERSIZE        1024*512
 #define     DOWNLOADMANAGER_UPDATEINTERVAL      1024*100

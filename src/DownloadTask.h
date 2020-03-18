@@ -14,14 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef BASE_DOWNLOADTASK_H_
-#define BASE_DOWNLOADTASK_H_
+#ifndef DOWNLOADTASK_H_
+#define DOWNLOADTASK_H_
 
 #include "glib.h"
+#include "glibcurl.h"
 #include <string>
 #include <pbnjson.hpp>
-#include <util/Time.h>
-#include "../external/glibcurl.h"
+#include "Time.h"
 
 /* COMMENT:
  *
@@ -252,4 +252,4 @@ private:
     int remainingRedCounts;
 };
 
-#endif /*BASE_DOWNLOADTASK_H_*/
+#endif /*DOWNLOADTASK_H_*/

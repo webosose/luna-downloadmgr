@@ -14,12 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <base/DownloadTask.h>
-#include <core/DownloadManager.h>
+#include "DownloadTask.h"
+#include "DownloadManager.h"
+#include "DownloadUtils.h"
+#include "JUtil.h"
+#include "Utils.h"
 #include <pbnjson.hpp>
-#include <util/DownloadUtils.h>
-#include <util/JUtil.h>
-#include <util/Utils.h>
 
 DownloadTask::DownloadTask()
     : ticket(0),

@@ -13,8 +13,8 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-#include <core/DownloadManager.h>
-#include <core/Watchdog.h>
+#include "DownloadManager.h"
+#include "Watchdog.h"
 
 static inline gboolean is_idle(gpointer ctx)
 {

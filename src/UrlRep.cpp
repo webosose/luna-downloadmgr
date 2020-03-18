@@ -16,7 +16,7 @@
 
 #include <uriparser/Uri.h>
 
-#include <util/UrlRep.h>
+#include "UrlRep.h"
 
 #define URI_TEXT_RANGE_TO_STRING(textRange)                               \
     textRange.first ? std::string(textRange.first,                        \

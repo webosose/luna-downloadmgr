@@ -14,15 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <core/DownloadManager.h>
-#include <core/Watchdog.h>
+#include "DownloadSettings.h"
+#include "DownloadManager.h"
+#include "Logging.h"
+#include "Watchdog.h"
+
 #include <cstdlib>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <glib.h>
 #include <malloc.h>
-#include <setting/DownloadSettings.h>
-#include <util/Logging.h>
 
 //#define PRINT_MALLOC_STATS
 

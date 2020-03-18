@@ -14,10 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <setting/DownloadSettings.h>
-#include <util/JUtil.h>
-#include <util/Logging.h>
-#include <util/Utils.h>
+#include "JUtil.h"
+#include "Utils.h"
+#include "Logging.h"
+#include "DownloadSettings.h"
 
 class DefaultResolver: public pbnjson::JResolver {
 public:

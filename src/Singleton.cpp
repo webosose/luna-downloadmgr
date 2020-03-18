@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019 LG Electronics, Inc.
+// Copyright (c) 2013-2019 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <util/Logging.h>
+#include "Singleton.hpp"
 
-PmLogContext GetPmLogContext()
+namespace SingletonNS {
+std::list<Tracker*> _list;
+bool _atexit_registered = false;
+
+void destroyAll()
 {
-    static PmLogContext logContext = 0;
-    if (0 == logContext) {
-        PmLogGetContext("DownloadMgr", &logContext);
+    Tracker *pTracker = NULL;
+    while (!_list.empty()) {
+        pTracker = _list.back();
+        _list.pop_back();
+        delete pTracker;
     }
-    return logContext;
+}
 }

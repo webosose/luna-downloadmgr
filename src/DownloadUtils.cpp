@@ -14,6 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "DownloadUtils.h"
+#include "Logging.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,8 +28,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
-#include <util/DownloadUtils.h>
-#include <util/Logging.h>
 
 #include <iostream>
 #include <sstream>
