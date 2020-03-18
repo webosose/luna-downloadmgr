@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019 LG Electronics, Inc.
+// Copyright (c) 2012-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@
 #include <time.h>
 #include <stdint.h>
 
-class Time {
+class Time
+{
 public:
 
     static inline uint32_t convertToMs(const struct timeval* time)
@@ -57,8 +58,7 @@ public:
         return -1;
     }
 
-    static inline uint32_t curSysTimeMs()
-    {
+    static inline uint32_t curSysTimeMs() {
         struct timeval currTime;
         ::gettimeofday(&currTime, NULL);
         return convertToMs(&currTime);

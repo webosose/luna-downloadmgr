@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 LG Electronics, Inc.
+// Copyright (c) 2013-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,31 +22,33 @@
 #include <list>
 #include <algorithm>
 
-namespace SingletonNS {
-//! Base class for manage singleton instances
-class Tracker {
-public:
-    virtual ~Tracker()
+namespace SingletonNS
+{
+    //! Base class for manage singleton instances
+    class Tracker
     {
-    }
-};
+    public:
+        virtual ~Tracker() {}
+    };
 
-extern std::list<Tracker*> _list;
-extern bool _atexit_registered;
+    extern std::list<Tracker*> _list;
+    extern bool _atexit_registered;
 
-extern void destroyAll();
+    extern void destroyAll();
 }
 
 //! Singleton template class
-template<typename TYPE>
-class Singleton {
+template <typename TYPE>
+class Singleton
+{
 public:
     /*! get singleton instance
      instance will be destroy when program ends automatically
-     */
+    */
     static TYPE& instance()
     {
-        if (!_instance) {
+        if (!_instance)
+        {
             _instance = new TYPE;
             Singleton<TYPE>::track();
         }
@@ -64,8 +66,8 @@ public:
 
     /*! replace singleton instance
      it not recommanded call this function if not for test
-     */
-    template<typename REPLACE_TYPE>
+    */
+    template <typename REPLACE_TYPE>
     static void replace()
     {
         destroy();
@@ -77,13 +79,11 @@ public:
 private:
 
     //! Implement class for manage singleton instances
-    template<typename T>
-    class TrackerImpl: public SingletonNS::Tracker {
+    template <typename T>
+    class TrackerImpl : public SingletonNS::Tracker
+    {
     public:
-        TrackerImpl(T* _p) :
-                m_p(_p)
-        {
-        }
+        TrackerImpl(T* _p) : m_p(_p) {}
         ~TrackerImpl()
         {
             delete m_p;
@@ -93,18 +93,15 @@ private:
     };
 
     //! Helper class for find singleton track from list
-    template<typename T>
-    class TrackerFinder {
+    template <typename T>
+    class TrackerFinder
+    {
     public:
-        TrackerFinder(T *_p) :
-                m_p(_p)
-        {
-        }
+        TrackerFinder(T *_p) : m_p(_p) {}
         bool operator()(SingletonNS::Tracker *p)
         {
-            TrackerImpl<T> *pImpl = static_cast<TrackerImpl<T>*>(p);
-            if (!pImpl)
-                return false;
+            TrackerImpl<T> *pImpl = static_cast< TrackerImpl<T>* >(p);
+            if (!pImpl) return false;
             return (pImpl->m_p == m_p) ? true : false;
         }
 
@@ -112,28 +109,26 @@ private:
     };
 
 protected:
-    friend class TrackerImpl<TYPE> ;
+    friend class TrackerImpl<TYPE>;
 
     //! Constructor
-    Singleton()
-    {
-    }
+    Singleton() {}
 
     //! Destructor
-    virtual ~Singleton()
-    {
-    }
+    virtual ~Singleton() {}
 
 private:
     //! Track this instance
     static void track()
     {
         SingletonNS::Tracker* pTracker = new TrackerImpl<TYPE>(Singleton<TYPE>::_instance);
-        if (pTracker) {
+        if (pTracker)
+        {
             SingletonNS::_list.push_back(pTracker);
-            if (!SingletonNS::_atexit_registered) {
+            if (!SingletonNS::_atexit_registered)
+            {
                 SingletonNS::_atexit_registered = true;
-                atexit(SingletonNS::destroyAll);
+                atexit( SingletonNS::destroyAll );
             }
         }
     }
@@ -141,8 +136,10 @@ private:
     //! Untrack this instance
     static void untrack()
     {
-        std::list<SingletonNS::Tracker*>::iterator it = std::find_if(SingletonNS::_list.begin(), SingletonNS::_list.end(), TrackerFinder<TYPE>(Singleton<TYPE>::_instance));
-        if (it != SingletonNS::_list.end()) {
+        std::list<SingletonNS::Tracker*>::iterator it = std::find_if(SingletonNS::_list.begin(),
+            SingletonNS::_list.end(), TrackerFinder<TYPE>(Singleton<TYPE>::_instance) );
+        if (it != SingletonNS::_list.end())
+        {
             delete *it;
             SingletonNS::_list.erase(it);
         }
@@ -151,7 +148,7 @@ private:
     static TYPE* _instance;
 };
 
-template<typename TYPE>
+template <typename TYPE>
 TYPE* Singleton<TYPE>::_instance = NULL;
 
 #endif

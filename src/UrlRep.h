@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019 LG Electronics, Inc.
+// Copyright (c) 2012-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,11 @@
 #include <map>
 
 // Broken down representation of a url
-struct UrlRep {
+struct UrlRep
+{
     static UrlRep fromUrl(const char* uri);
     static UrlRep fromUrl(const std::string& uri);
-    UrlRep() :
-            valid(false)
-    {
-    }
+    UrlRep() : valid(false) {}
     bool valid;
     std::string scheme;
     std::string userInfo;
@@ -36,7 +34,7 @@ struct UrlRep {
     std::string path;
     std::string pathOnly;
     std::string resource;       //The path = pathOnly + "/" + resource
-    std::map<std::string, std::string> query;
+    std::map<std::string,std::string> query;
     std::string fragment;
 };
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 LG Electronics, Inc.
+// Copyright (c) 2013-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,30 +24,25 @@
 #include <glib.h>
 
 //! List of utilites for common
-class Utils {
+class Utils
+{
 private:
     // abstract class for async call
-    class IAsyncCall {
+    class IAsyncCall
+    {
     public:
-        virtual ~IAsyncCall()
-        {
-        }
+        virtual ~IAsyncCall() { }
         virtual void Call() = 0;
     };
 
     // implementaion for async call
-    template<typename T>
-    class AsyncCall: public IAsyncCall {
+    template <typename T>
+    class AsyncCall : public IAsyncCall
+    {
     public:
-        AsyncCall(T _func) :
-                func(_func)
-        {
-        }
+        AsyncCall(T _func) : func(_func) {}
 
-        void Call()
-        {
-            func();
-        }
+        void Call() { func(); }
     private:
         T func;
     };
@@ -66,7 +61,7 @@ public:
     static bool remove_file(const std::string &path);
 
     //! Make std::string for type T
-    template<class T>
+    template <class T>
     static std::string toString(const T &arg)
     {
         std::ostringstream out;
@@ -75,11 +70,11 @@ public:
     }
 
     //! Call function asynchronously
-    template<typename T>
+    template <typename T>
     static bool async(T function)
     {
         AsyncCall<T> *p = new AsyncCall<T>(function);
-        g_timeout_add(0, cbAsync, (gpointer) p);
+        g_timeout_add(0, cbAsync, (gpointer)p);
         return true;
     }
 

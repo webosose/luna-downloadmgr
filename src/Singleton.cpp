@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 LG Electronics, Inc.
+// Copyright (c) 2013-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,17 +16,19 @@
 
 #include "Singleton.hpp"
 
-namespace SingletonNS {
-std::list<Tracker*> _list;
-bool _atexit_registered = false;
-
-void destroyAll()
+namespace SingletonNS
 {
-    Tracker *pTracker = NULL;
-    while (!_list.empty()) {
-        pTracker = _list.back();
-        _list.pop_back();
-        delete pTracker;
+    std::list<Tracker*> _list;
+    bool _atexit_registered = false;
+
+    void destroyAll()
+    {
+        Tracker *pTracker = NULL;
+        while(!_list.empty())
+        {
+            pTracker = _list.back();
+            _list.pop_back();
+            delete pTracker;
+        }
     }
-}
 }

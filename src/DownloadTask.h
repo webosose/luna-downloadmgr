@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019 LG Electronics, Inc.
+// Copyright (c) 2012-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,71 +36,27 @@
 class CurlDescriptor {
 
 public:
-    CurlDescriptor()
-        : _handle(0),
-          headerList(0),
-          _resultCode((CURLcode) 0),
-          _httpResultCode(0),
-          _httpConnectCode(0)
-    {
-    }
-
-    CurlDescriptor(CURL * curlHandle)
-        : _handle(curlHandle),
-          headerList(NULL),
-          _resultCode((CURLcode) 0),
-          _httpResultCode(0),
-          _httpConnectCode(0)
-    {
-    }
-
-    CurlDescriptor(const CurlDescriptor& cd)
-    {
+    CurlDescriptor() : _handle(0) , headerList(0) , _resultCode((CURLcode)0) , _httpResultCode(0) , _httpConnectCode(0) {}
+    CurlDescriptor(CURL * curlHandle) : _handle(curlHandle) , headerList(NULL) , _resultCode((CURLcode)0) , _httpResultCode(0) , _httpConnectCode(0) {}
+    CurlDescriptor(const CurlDescriptor& cd) {
         _handle = cd._handle;
         headerList = cd.headerList;
         _resultCode = cd._resultCode;
         _httpResultCode = cd._httpResultCode;
         _httpConnectCode = cd._httpConnectCode;
     }
+    ~CurlDescriptor() {}
 
-    ~CurlDescriptor()
-    {
-    }
+    bool operator==(const CurlDescriptor& cd) const { return (_handle == cd._handle);}
+    bool operator>=(const CurlDescriptor& cd) const {return (_handle >= cd._handle);}
+    bool operator<=(const CurlDescriptor& cd) const {return (_handle <= cd._handle);}
+    bool operator>(const CurlDescriptor& cd) const {return (_handle > cd._handle);}
+    bool operator<(const CurlDescriptor& cd) const {return (_handle < cd._handle);}
+    bool operator!=(const CurlDescriptor& cd) const { return (_handle != cd._handle);}
 
-    bool operator==(const CurlDescriptor& cd) const
-    {
-        return (_handle == cd._handle);
-    }
-
-    bool operator>=(const CurlDescriptor& cd) const
-    {
-        return (_handle >= cd._handle);
-    }
-
-    bool operator<=(const CurlDescriptor& cd) const
-    {
-        return (_handle <= cd._handle);
-    }
-
-    bool operator>(const CurlDescriptor& cd) const
-    {
-        return (_handle > cd._handle);
-    }
-
-    bool operator<(const CurlDescriptor& cd) const
-    {
-        return (_handle < cd._handle);
-    }
-
-    bool operator!=(const CurlDescriptor& cd) const
-    {
-        return (_handle != cd._handle);
-    }
-
-    CurlDescriptor& operator=(const CurlDescriptor& cd)
-    {
+    CurlDescriptor& operator=(const CurlDescriptor& cd) {
         if (*this == cd) {  //WARN: careful if this class gets expanded... == must always mean that they're logically equivalent in every meaningful sense
-            return *this;   //TODO: investigate why logical rather than pointer equivalence was used - maybe just an oversight
+            return *this;           //TODO: investigate why logical rather than pointer equivalence was used - maybe just an oversight
         }
 
         this->_handle = cd._handle;
@@ -112,59 +68,35 @@ public:
         return *this;
     }
 
-    CURL * getHandle()
-    {
-        return _handle;
-    }
-
-    CURL * setHandle(CURL * newHandle)
-    {
+    CURL * getHandle() {return _handle;}
+    CURL * setHandle(CURL * newHandle) {
         CURL * oldHandle = _handle;
         _handle = newHandle;
         return oldHandle;
     }
 
-    struct curl_slist * getHeaderList()
-    {
-        return headerList;
-    }
-
-    struct curl_slist * setHeaderList(struct curl_slist * newHeaderList)
-    {
+    struct curl_slist * getHeaderList() {return headerList;}
+    struct curl_slist * setHeaderList(struct curl_slist * newHeaderList) {
         struct curl_slist * tmp = headerList;
         headerList = newHeaderList;
         return tmp;
     }
 
-    CURLcode getResultCode()
-    {
-        return _resultCode;
-    }
-
-    CURLcode setResultCode(CURLcode resultCode)
-    {
+    CURLcode getResultCode() {return _resultCode;}
+    CURLcode setResultCode(CURLcode resultCode) {
         CURLcode tmp = _resultCode;
         _resultCode = resultCode;
         return tmp;
     }
 
-    long getHttpResultCode()
-    {
-        return _httpResultCode;
-    }
-
-    long setHttpResultCode(long httpResultCode)
-    {
+    long getHttpResultCode() { return _httpResultCode;}
+    long setHttpResultCode(long httpResultCode) {
         long tmp = _httpResultCode;
         _httpResultCode = httpResultCode;
         return tmp;
     }
 
-    long getHttpConnectCode()
-    {
-        return _httpConnectCode;
-    }
-
+    long getHttpConnectCode() { return _httpConnectCode;}
     long setHttpConnectCode(long httpConnectCode)
     {
         long tmp = _httpConnectCode;
@@ -193,12 +125,12 @@ public:
     std::string deviceId;
 
     std::string downloadPrefix;
-    bool opt_keepOriginalFilenameOnRedirect;
+    bool    opt_keepOriginalFilenameOnRedirect;
 
     uint64_t initialOffsetBytes;
     uint64_t bytesCompleted;
     uint64_t bytesTotal;
-    std::pair<uint64_t, uint64_t> rangeSpecified;
+    std::pair<uint64_t,uint64_t> rangeSpecified;
 
     DownloadTask();
     ~DownloadTask();
@@ -207,27 +139,13 @@ public:
     pbnjson::JValue toJSON();
     std::string destToJSON();
 
-    void setLocationHeader(const std::string& s)
-    {
-        httpHeader_Location = s;
-    }
+    void setLocationHeader(const std::string& s) { httpHeader_Location = s; }
     void setUpdateInterval(uint64_t interval = 0);
 
     // functions for counting maximum redirections.
-    int getRemainingRedCounts()
-    {
-        return remainingRedCounts;
-    }
-
-    void decreaseRedCounts()
-    {
-        remainingRedCounts--;
-    }
-
-    void setRemainingRedCounts(const int currentRedCounts)
-    {
-        remainingRedCounts = currentRedCounts;
-    }
+    int getRemainingRedCounts() { return remainingRedCounts; }
+    void decreaseRedCounts() { remainingRedCounts--; }
+    void setRemainingRedCounts(const int currentRedCounts) { remainingRedCounts = currentRedCounts; }
 
     //the following do NOT go into the json record of the task
     uint64_t lastUpdateAt;          // sets the bytemark at which the last subscription update was sent
@@ -237,7 +155,7 @@ public:
     FILE * fp;
     bool queued;
     std::string httpHeader_Location; //for 301/302 Redirect codes, unused otherwise
-    int numErrors;
+    int  numErrors;
     std::string ownerId;
     std::string connectionName;
     bool canHandlePause;

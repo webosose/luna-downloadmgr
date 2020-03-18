@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2019 LG Electronics, Inc.
+// Copyright (c) 2012-2018 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,14 +43,14 @@ static void handle_sigterm(int signal)
     g_main_loop_quit(gMainLoop);
 }
 
-int main(int argc, char** argv)
+int main( int argc, char** argv)
 {
-    LOG_DEBUG("LunaDownloadMgr STARTING");
+    LOG_DEBUG ("LunaDownloadMgr STARTING");
 
     signal(SIGTERM, handle_sigterm);
 
-    gMainLoop = g_main_loop_new(NULL, FALSE);
-    LOG_DEBUG("%s:%d gMainLoop = %p", __FILE__, __LINE__, gMainLoop);
+    gMainLoop = g_main_loop_new (NULL, FALSE);
+    LOG_DEBUG ("%s:%d gMainLoop = %p", __FILE__, __LINE__, gMainLoop);
 
     //g_thread_init is deprecated since glib 2.0
     //g_thread_init(NULL);
@@ -58,8 +58,8 @@ int main(int argc, char** argv)
     // Load DownloadSettings (first!)
     DownloadSettings* settings = DownloadSettings::Settings();
 
-    LOG_DEBUG("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'Fake1x' is %s", __FUNCTION__, (settings->dbg_fake1xForWan ? "ON!" : "OFF"));
-    LOG_DEBUG("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'AutoResume' is %s", __FUNCTION__, (settings->autoResume ? "ON!" : "OFF"));
+    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'Fake1x' is %s", __FUNCTION__, ( settings->dbg_fake1xForWan ? "ON!" : "OFF" ));
+    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'AutoResume' is %s", __FUNCTION__, ( settings->autoResume ? "ON!" : "OFF" ));
 
     // Initialize the Download Manager
     DownloadManager::instance().init();
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     g_timeout_add_seconds(WATCHDOG_TIMEOUT, watchdog_handler, static_cast<gpointer>(&DownloadManager::instance()));
 #endif
 
-    g_main_loop_run(gMainLoop);
+    g_main_loop_run (gMainLoop);
     g_main_loop_unref(gMainLoop);
 
     return 0;
