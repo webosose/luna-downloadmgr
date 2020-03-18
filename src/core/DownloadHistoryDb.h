@@ -21,15 +21,73 @@
 #include <vector>
 #include <sqlite3.h>
 
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_OK                    0
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_GENERALERROR          1
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR          2
-#define DOWNLOADHISTORYDB_HISTORYSTATUS_NOTINHISTORY          3
-
-#include "DownloadHistory.h"
+#define     DOWNLOADHISTORYDB_HISTORYSTATUS_OK                    0
+#define     DOWNLOADHISTORYDB_HISTORYSTATUS_GENERALERROR          1
+#define     DOWNLOADHISTORYDB_HISTORYSTATUS_HISTORYERROR          2
+#define     DOWNLOADHISTORYDB_HISTORYSTATUS_NOTINHISTORY          3
 
 class DownloadHistoryDb {
 public:
+
+    class DownloadHistory {
+    public:
+        unsigned long m_ticket;
+        std::string m_owner;
+        std::string m_interface;
+        std::string m_state;
+        std::string m_downloadRecordJsonString;
+
+        DownloadHistory(const unsigned long ticket, const std::string& owner, const std::string& interface, const std::string& state, const std::string& record)
+            : m_ticket(ticket),
+              m_owner(owner),
+              m_interface(interface),
+              m_state(state),
+              m_downloadRecordJsonString(record)
+        {
+        }
+
+        DownloadHistory(const unsigned long ticket, const char * cstr_owner, const char * cstr_interface, const char * cstr_state, const char * cstr_record)
+            : m_ticket(ticket)
+        {
+            if (cstr_owner)
+                m_owner = cstr_owner;
+            if (cstr_interface)
+                m_interface = cstr_interface;
+            if (cstr_state)
+                m_state = cstr_state;
+            if (cstr_record)
+                m_downloadRecordJsonString = cstr_record;
+        }
+
+        DownloadHistory()
+            : m_ticket(0)
+        {
+        }
+
+        //TODO: no longer needed; (once used for special processing during cloning)
+        DownloadHistory(const DownloadHistory& c)
+        {
+            m_ticket = c.m_ticket;
+            m_owner = c.m_owner;
+            m_interface = c.m_interface;
+            m_state = c.m_state;
+            m_downloadRecordJsonString = c.m_downloadRecordJsonString;
+        }
+
+        //TODO: no longer needed; (once used for special processing during cloning)
+        DownloadHistory& operator=(const DownloadHistory& c)
+        {
+            if (this == &c)
+                return *this;
+            m_ticket = c.m_ticket;
+            m_owner = c.m_owner;
+            m_interface = c.m_interface;
+            m_state = c.m_state;
+            m_downloadRecordJsonString = c.m_downloadRecordJsonString;
+            return *this;
+        }
+    };
+
     static DownloadHistoryDb* instance();
 
     bool addHistory(unsigned long ticket, const std::string& caller, const std::string interface, const std::string& state, const std::string& downloadRecordString);
@@ -53,6 +111,7 @@ public:
     bool getMaxKey(unsigned long& maxKey);
 
 private:
+
     DownloadHistoryDb();
 
     bool openDownloadHistoryDb(std::string& errmsg);
@@ -60,6 +119,8 @@ private:
 
     bool checkTableConsistency();
     bool integrityCheckDb();
+
+private:
 
     static DownloadHistoryDb* s_dlhist_instance;
     sqlite3* m_dlDb;

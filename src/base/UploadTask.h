@@ -22,12 +22,58 @@
 #include <stdint.h>
 
 #include "../external/glibcurl.h"
-#include "PostItem.h"
 
 typedef std::pair<std::string, std::string> kvpair;
 
-class UploadTask {
+/*
+ * no checking on values...container class only
+ */
+class PostItem {
 public:
+
+    enum ItemType {
+        File,
+        Value,
+        Buffer
+    };
+
+    std::string m_key;
+    ItemType m_type;
+    std::string m_data;
+    std::string m_contentType;
+
+    PostItem(const std::string& key, const std::string& data, ItemType type, const std::string& contentType)
+        : m_key(key),
+          m_type(type),
+          m_data(data),
+          m_contentType(contentType)
+    {
+    }
+
+    PostItem(const PostItem& c)
+    {
+        m_key = c.m_key;
+        m_type = c.m_type;
+        m_data = c.m_data;
+        m_contentType = c.m_contentType;
+    }
+
+    PostItem& operator=(const PostItem& c)
+    {
+        if (&c == this)
+            return *this;
+        m_key = c.m_key;
+        m_type = c.m_type;
+        m_data = c.m_data;
+        m_contentType = c.m_contentType;
+        return *this;
+    }
+};
+
+class UploadTask {
+
+public:
+
     static UploadTask * newFileUploadTask(const std::string& targeturl, const std::string& sourcefile, const std::string& filemimepartlabel, std::vector<PostItem>& postparts,
             std::vector<std::string>& httpheaders, std::vector<kvpair>& cookies, const std::string& contenttype);
     static UploadTask * newBufferUploadTask(const std::string& targeturl, const std::string& sourcebuffer, std::vector<std::string>& httpheaders, const std::string& contenttype);

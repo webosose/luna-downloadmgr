@@ -35,7 +35,6 @@
 #define FREESPACE_CRITICALMARK_FULL_PCT 99
 
 class DownloadSettings: public Singleton<DownloadSettings> {
-friend class Singleton<DownloadSettings>;
 public:
     std::string m_downloadPathMedia;              //default >> /media/internal/downloads
     std::string m_schemaPath;                     //default >> @WEBOS_INSTALL_WEBOS_SYSCONFDIR@/schemas/luna-downloadmgr/
@@ -71,7 +70,9 @@ public:
 private:
     void load();
     DownloadSettings();
-    virtual ~DownloadSettings();
+    ~DownloadSettings();
+
+    friend class Singleton<DownloadSettings> ;
 
     static bool validateDownloadPath(const std::string& path);
 
