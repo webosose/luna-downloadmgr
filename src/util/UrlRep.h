@@ -24,26 +24,20 @@
 struct UrlRep {
     static UrlRep fromUrl(const char* uri);
     static UrlRep fromUrl(const std::string& uri);
-
-    UrlRep()
-        : m_valid(false)
+    UrlRep() :
+            valid(false)
     {
     }
-
-    virtual ~UrlRep()
-    {
-    }
-
-    bool m_valid;
-    std::string m_scheme;
-    std::string m_userInfo;
-    std::string m_host;
-    std::string m_port;
-    std::string m_path;
-    std::string m_pathOnly;
-    std::string m_resource;       //The path = pathOnly + "/" + resource
-    std::map<std::string, std::string> m_query;
-    std::string m_fragment;
+    bool valid;
+    std::string scheme;
+    std::string userInfo;
+    std::string host;
+    std::string port;
+    std::string path;
+    std::string pathOnly;
+    std::string resource;       //The path = pathOnly + "/" + resource
+    std::map<std::string, std::string> query;
+    std::string fragment;
 };
 
 #endif /* URLREP_H */

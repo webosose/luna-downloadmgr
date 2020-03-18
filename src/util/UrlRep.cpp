@@ -37,29 +37,29 @@ UrlRep UrlRep::fromUrl(const char* uri)
 
     state.uri = &uriA;
 
-    urlRep.m_query.clear();
+    urlRep.query.clear();
 
     if (uriParseUriA(&state, uri) != URI_SUCCESS)
         return urlRep;
 
-    urlRep.m_scheme = URI_TEXT_RANGE_TO_STRING(uriA.scheme);
-    urlRep.m_userInfo = URI_TEXT_RANGE_TO_STRING(uriA.userInfo);
-    urlRep.m_host = URI_TEXT_RANGE_TO_STRING(uriA.hostText);
-    urlRep.m_port = URI_TEXT_RANGE_TO_STRING(uriA.portText);
-    urlRep.m_fragment = URI_TEXT_RANGE_TO_STRING(uriA.fragment);
+    urlRep.scheme = URI_TEXT_RANGE_TO_STRING(uriA.scheme);
+    urlRep.userInfo = URI_TEXT_RANGE_TO_STRING(uriA.userInfo);
+    urlRep.host = URI_TEXT_RANGE_TO_STRING(uriA.hostText);
+    urlRep.port = URI_TEXT_RANGE_TO_STRING(uriA.portText);
+    urlRep.fragment = URI_TEXT_RANGE_TO_STRING(uriA.fragment);
 
     UriPathSegmentA* tmpPath = uriA.pathHead;
     while (tmpPath) {
         if (tmpPath == uriA.pathTail) {
-            urlRep.m_pathOnly = urlRep.m_path;
+            urlRep.pathOnly = urlRep.path;
         }
-        urlRep.m_path += "/";
-        urlRep.m_path += URI_TEXT_RANGE_TO_STRING(tmpPath->text);
+        urlRep.path += "/";
+        urlRep.path += URI_TEXT_RANGE_TO_STRING(tmpPath->text);
         tmpPath = tmpPath->next;
     }
 
     if (uriA.pathTail)
-        urlRep.m_resource = URI_TEXT_RANGE_TO_STRING((uriA.pathTail)->text);
+        urlRep.resource = URI_TEXT_RANGE_TO_STRING((uriA.pathTail)->text);
 
     if (uriA.query.first) {
         uriDissectQueryMallocA(&queryList, &queryCount, uriA.query.first, uriA.query.afterLast);
@@ -67,7 +67,7 @@ UrlRep UrlRep::fromUrl(const char* uri)
         UriQueryListA* tmpQueryList = queryList;
         while (tmpQueryList) {
             if (tmpQueryList->key) {
-                urlRep.m_query[tmpQueryList->key] = tmpQueryList->value ? tmpQueryList->value : std::string();
+                urlRep.query[tmpQueryList->key] = tmpQueryList->value ? tmpQueryList->value : std::string();
             }
             tmpQueryList = tmpQueryList->next;
         }
@@ -78,7 +78,7 @@ UrlRep UrlRep::fromUrl(const char* uri)
     uriFreeUriMembersA(&uriA);
 
     //TODO: maybe a more stringent check on validity???
-    urlRep.m_valid = true;
+    urlRep.valid = true;
     return urlRep;
 }
 

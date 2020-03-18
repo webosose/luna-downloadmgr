@@ -24,8 +24,6 @@
 #include <vector>
 #include <luna-service2/lunaservice.h>
 
-#define ERRMASK_POSTSUBUPDATE    1
-
 template<class T> std::string ConvertToString(const T &arg)
 {
     std::ostringstream out;
@@ -34,10 +32,16 @@ template<class T> std::string ConvertToString(const T &arg)
 }
 
 bool deleteFile(const char* filePath);
+bool filecopy(const std::string& srcFile, const std::string& destFile);
 std::string trimWhitespace(const std::string& s, const std::string& drop = "\r\n\t ");
 int splitFileAndPath(const std::string& srcPathAndFile, std::string& pathPart, std::string& filePart);
+int splitFileAndExtension(const std::string& srcFileAndExt, std::string& filePart, std::string& extensionPart);
 int splitStringOnKey(std::vector<std::string>& returnSplitSubstrings, const std::string& baseStr, const std::string& delims);
+bool isNonErrorProcExit(int ecode, int normalCode = 0);
 
+std::string getHtml5DatabaseFolderNameForApp(const std::string& appId, std::string appFolderPath);
+
+#define ERRMASK_POSTSUBUPDATE    1
 int postSubscriptionUpdate(const std::string& key, const std::string& postMessage, LSHandle * serviceHandle);
 bool processSubscription(LSHandle * serviceHandle, LSMessage * message, const std::string& key);
 uint32_t removeSubscriptions(const std::string& key, LSHandle * serviceHandle);

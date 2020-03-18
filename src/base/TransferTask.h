@@ -21,47 +21,49 @@
 #include <base/UploadTask.h>
 
 class TransferTask {
+
 public:
+
     enum TransferTaskType {
         DOWNLOAD_TASK,
         UPLOAD_TASK
     };
 
     TransferTask(DownloadTask * ptr_downloadTask)
-        : m_type(DOWNLOAD_TASK),
-          m_downloadTask(ptr_downloadTask),
-          m_uploadTask(0),
+        : type(DOWNLOAD_TASK),
+          p_downloadTask(ptr_downloadTask),
+          p_uploadTask(0),
           m_remove(false)
     {
     }
 
     TransferTask(UploadTask * ptr_uploadTask)
-        : m_type(UPLOAD_TASK),
-          m_downloadTask(0),
-          m_uploadTask(ptr_uploadTask),
+        : type(UPLOAD_TASK),
+          p_downloadTask(0),
+          p_uploadTask(ptr_uploadTask),
           m_remove(false)
     {
     }
 
     virtual ~TransferTask()
     {
-        if (m_downloadTask)
-            delete m_downloadTask;
-        if (m_uploadTask)
-            delete m_uploadTask;
+        if (p_downloadTask)
+            delete p_downloadTask;
+        if (p_uploadTask)
+            delete p_uploadTask;
     }
 
     void setLocationHeader(const std::string& s)
     {
-        if (m_downloadTask)
-            m_downloadTask->setLocationHeader(s);
-        if (m_uploadTask)
-            m_uploadTask->setReplyLocation(s);
+        if (p_downloadTask)
+            p_downloadTask->setLocationHeader(s);
+        if (p_uploadTask)
+            p_uploadTask->setReplyLocation(s);
     }
 
-    TransferTaskType m_type;
-    DownloadTask* m_downloadTask;
-    UploadTask* m_uploadTask;
+    TransferTaskType type;
+    DownloadTask* p_downloadTask;
+    UploadTask* p_uploadTask;
     bool m_remove;
 
 };

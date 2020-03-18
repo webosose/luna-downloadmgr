@@ -19,6 +19,7 @@
 
 #include <base/TransferTask.h>
 #include <core/DownloadHistoryDb.h>
+#include <core/Watchdog.h>
 #include <list>
 #include <string>
 #include <map>
@@ -76,40 +77,24 @@
 #define     DOWNLOADMANAGER_UPLOADSTATUS_GENERALERROR            1
 #define     DOWNLOADMANAGER_UPLOADSTATUS_INVALIDPARAM            2
 
-#define SWAPTOIF_ERROR_INVALIDIF        -1
-#define SWAPTOIF_ERROR_NOSUCHTICKET     -2
-#define SWAPTOIF_SUCCESS                 1
-
-#define SWAPALLTOIF_ERROR_INVALIDIF             -1
-#define SWAPALLTOIF_ERROR_ATLEASTONEFAIL        -2
-#define SWAPALLTOIF_SUCCESS                      1
-
 class DownloadManager: public Singleton<DownloadManager> {
-friend class Singleton<DownloadManager> ;
 public:
+
     unsigned long generateNewTicket();
     enum {
         keepOriginalFilenameOnRedirect = 16
     };
 
     enum ConnectionStatus {
-        InetConnectionUnknownState,
-        InetConnectionConnected,
-        InetConnectionDisconnected
+        InetConnectionUnknownState, InetConnectionConnected, InetConnectionDisconnected
     };
 
     enum WanConnectionType {
-        WanConnectionUnknown,
-        WanConnection1x,
-        WanConnectionHS
+        WanConnectionUnknown, WanConnection1x, WanConnectionHS
     };
 
     enum Connection {
-        ANY,
-        Wifi,
-        Wan,
-        Btpan,
-        Wired
+        ANY, Wifi, Wan, Btpan, Wired
     };
 
     int download(const std::string& caller, const std::string& uri, const std::string& mime, const std::string& overrideTargetDir, const std::string& overrideTargetFile, const unsigned long ticket,
@@ -127,7 +112,14 @@ public:
     int pauseAll();
     int pauseAllForInterface(Connection interface);
 
+#define SWAPTOIF_ERROR_INVALIDIF        -1
+#define SWAPTOIF_ERROR_NOSUCHTICKET     -2
+#define SWAPTOIF_SUCCESS                 1
     int swapToInterface(const unsigned long int ticket, const Connection newInterface);
+
+#define SWAPALLTOIF_ERROR_INVALIDIF             -1
+#define SWAPALLTOIF_ERROR_ATLEASTONEFAIL        -2
+#define SWAPALLTOIF_SUCCESS                      1
     int swapAllActiveToInterface(const Connection newInterface);
 
     uint32_t uploadPOSTFile(const std::string& file, const std::string& url, const std::string& filePostLabel, std::vector<PostItem>& postHeaders, std::vector<std::string>& httpHeaders,
@@ -309,6 +301,8 @@ private:
     bool m_brickMode;
     bool m_msmExitClean;
     bool m_mode;
+
+    friend class Singleton<DownloadManager> ;
 
     std::string m_sleepDClientId;
 public:

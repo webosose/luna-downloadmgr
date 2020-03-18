@@ -22,44 +22,45 @@
 #include <util/Utils.h>
 
 DownloadTask::DownloadTask()
-    : m_ticket(0),
-      m_opt_keepOriginalFilenameOnRedirect(false),
-      m_initialOffsetBytes(0),
-      m_bytesCompleted(0),
-      m_bytesTotal(0),
-      m_rangeSpecified(std::pair<uint64_t, uint64_t>(0, 0)),
-      m_lastUpdateAt(0),
-      m_updateInterval(DOWNLOADMANAGER_UPDATEINTERVAL),
-      m_curlDesc(0),
-      m_fp(0),
-      m_isQueued(false),
-      m_numErrors(0),
-      m_canHandlePause(false),
-      m_autoResume(true),
-      m_appendTargetFile(false),
-      m_remainingRedCounts(MAXREDIRECTIONS)
+    : ticket(0),
+      opt_keepOriginalFilenameOnRedirect(false),
+      initialOffsetBytes(0),
+      bytesCompleted(0),
+      bytesTotal(0),
+      rangeSpecified(std::pair<uint64_t, uint64_t>(0, 0)),
+      lastUpdateAt(0),
+      updateInterval(DOWNLOADMANAGER_UPDATEINTERVAL),
+      applicationPackage(0),
+      curlDesc(0),
+      fp(0),
+      queued(false),
+      numErrors(0),
+      canHandlePause(false),
+      autoResume(true),
+      appendTargetFile(false),
+      remainingRedCounts(MAXREDIRECTIONS)
 {
 }
 
 DownloadTask::~DownloadTask()
 {
-    if (m_fp)
-        fclose(m_fp);
+    if (fp)
+        fclose(fp);
 }
 
 void DownloadTask::setMimeType(const std::string& type)
 {
-    m_detectedMIMEType = type;
-    size_t len = m_detectedMIMEType.size();
-    while (len > 0 && (m_detectedMIMEType[len - 1] == '\n' || m_detectedMIMEType[len - 1] == '\r')) {
-        m_detectedMIMEType.erase(len - 1, 1);
+    detectedMIMEType = type;
+    size_t len = detectedMIMEType.size();
+    while (len > 0 && (detectedMIMEType[len - 1] == '\n' || detectedMIMEType[len - 1] == '\r')) {
+        detectedMIMEType.erase(len - 1, 1);
         --len;
     }
 }
 
 std::string DownloadTask::destToJSON()
 {
-    std::string dest = m_destPath + m_destFile;
+    std::string dest = destPath + destFile;
     pbnjson::JValue jobj = pbnjson::Object();
     jobj.put("target", dest);
     std::string s = JUtil::toSimpleString(jobj);
@@ -76,41 +77,41 @@ std::string DownloadTask::toJSONString()
 pbnjson::JValue DownloadTask::toJSON()
 {
     pbnjson::JValue jobj = pbnjson::Object();
-    jobj.put("ticket", (int64_t) m_ticket);
-    jobj.put("url", m_url);
-    jobj.put("sourceUrl", m_url);
-    jobj.put("deviceId", m_deviceId);
-    jobj.put("authToken", m_authToken);
+    jobj.put("ticket", (int64_t) ticket);
+    jobj.put("url", url);
+    jobj.put("sourceUrl", url);
+    jobj.put("deviceId", deviceId);
+    jobj.put("authToken", authToken);
 
-    std::string dest = m_destPath + m_downloadPrefix + m_destFile;
+    std::string dest = destPath + downloadPrefix + destFile;
     std::string lbuff;
 
     jobj.put("target", dest);
-    jobj.put("destTempPrefix", m_downloadPrefix);
-    jobj.put("destFile", m_destFile);    //the final filename, regardless of temp prefixes/decorations
-    jobj.put("destPath", m_destPath);    // ""       path            ""
-    jobj.put("mimetype", m_detectedMIMEType);
+    jobj.put("destTempPrefix", downloadPrefix);
+    jobj.put("destFile", destFile);    //the final filename, regardless of temp prefixes/decorations
+    jobj.put("destPath", destPath);    // ""       path            ""
+    jobj.put("mimetype", detectedMIMEType);
 
-    lbuff = Utils::toString(m_bytesCompleted);
-    jobj.put("amountReceived", (int32_t) m_bytesCompleted);    //possible overflow
+    lbuff = Utils::toString(bytesCompleted);
+    jobj.put("amountReceived", (int32_t) bytesCompleted);    //possible overflow
     jobj.put("e_amountReceived", lbuff);
 
-    lbuff = Utils::toString(m_bytesTotal);
-    jobj.put("amountTotal", (int32_t) m_bytesTotal);    //possible overflow
+    lbuff = Utils::toString(bytesTotal);
+    jobj.put("amountTotal", (int32_t) bytesTotal);    //possible overflow
     jobj.put("e_amountTotal", lbuff);
 
-    lbuff = Utils::toString(m_initialOffsetBytes);
-    jobj.put("initialOffset", (int32_t) m_initialOffsetBytes);    //possible overflow
+    lbuff = Utils::toString(initialOffsetBytes);
+    jobj.put("initialOffset", (int32_t) initialOffsetBytes);    //possible overflow
     jobj.put("e_initialOffsetBytes", lbuff);
 
-    lbuff = Utils::toString(m_rangeSpecified.first);
+    lbuff = Utils::toString(rangeSpecified.first);
     jobj.put("e_rangeLow", lbuff);
-    lbuff = Utils::toString(m_rangeSpecified.second);
+    lbuff = Utils::toString(rangeSpecified.second);
     jobj.put("e_rangeHigh", lbuff);
 
-    jobj.put("canHandlePause", m_canHandlePause);
-    jobj.put("autoResume", m_autoResume);
-    jobj.put("cookieHeader", m_cookieHeader);
+    jobj.put("canHandlePause", canHandlePause);
+    jobj.put("autoResume", autoResume);
+    jobj.put("cookieHeader", cookieHeader);
 
     return jobj;
 }
@@ -118,13 +119,13 @@ pbnjson::JValue DownloadTask::toJSON()
 void DownloadTask::setUpdateInterval(uint64_t interval)
 {
     if (interval == 0) {
-        if (m_bytesTotal > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
-            m_updateInterval = m_bytesTotal / DOWNLOADMANAGER_UPDATENUM;
+        if (bytesTotal > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
+            updateInterval = bytesTotal / DOWNLOADMANAGER_UPDATENUM;
         else
-            m_updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL;
+            updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL;
     } else
-        m_updateInterval = interval;
+        updateInterval = interval;
 
-    if (m_updateInterval > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
-        m_updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM;
+    if (updateInterval > DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM)
+        updateInterval = DOWNLOADMANAGER_UPDATEINTERVAL * DOWNLOADMANAGER_UPDATENUM;
 }

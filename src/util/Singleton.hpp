@@ -75,6 +75,7 @@ public:
     }
 
 private:
+
     //! Implement class for manage singleton instances
     template<typename T>
     class TrackerImpl: public SingletonNS::Tracker {

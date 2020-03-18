@@ -20,6 +20,7 @@
 #include "glib.h"
 #include <string>
 #include <pbnjson.hpp>
+#include <util/Time.h>
 #include "../external/glibcurl.h"
 
 /* COMMENT:
@@ -36,30 +37,30 @@ class CurlDescriptor {
 
 public:
     CurlDescriptor()
-        : m_handle(0),
-          m_headerList(0),
-          m_resultCode((CURLcode) 0),
-          m_httpResultCode(0),
-          m_httpConnectCode(0)
+        : _handle(0),
+          headerList(0),
+          _resultCode((CURLcode) 0),
+          _httpResultCode(0),
+          _httpConnectCode(0)
     {
     }
 
     CurlDescriptor(CURL * curlHandle)
-        : m_handle(curlHandle),
-          m_headerList(NULL),
-          m_resultCode((CURLcode) 0),
-          m_httpResultCode(0),
-          m_httpConnectCode(0)
+        : _handle(curlHandle),
+          headerList(NULL),
+          _resultCode((CURLcode) 0),
+          _httpResultCode(0),
+          _httpConnectCode(0)
     {
     }
 
     CurlDescriptor(const CurlDescriptor& cd)
     {
-        m_handle = cd.m_handle;
-        m_headerList = cd.m_headerList;
-        m_resultCode = cd.m_resultCode;
-        m_httpResultCode = cd.m_httpResultCode;
-        m_httpConnectCode = cd.m_httpConnectCode;
+        _handle = cd._handle;
+        headerList = cd.headerList;
+        _resultCode = cd._resultCode;
+        _httpResultCode = cd._httpResultCode;
+        _httpConnectCode = cd._httpConnectCode;
     }
 
     ~CurlDescriptor()
@@ -68,32 +69,32 @@ public:
 
     bool operator==(const CurlDescriptor& cd) const
     {
-        return (m_handle == cd.m_handle);
+        return (_handle == cd._handle);
     }
 
     bool operator>=(const CurlDescriptor& cd) const
     {
-        return (m_handle >= cd.m_handle);
+        return (_handle >= cd._handle);
     }
 
     bool operator<=(const CurlDescriptor& cd) const
     {
-        return (m_handle <= cd.m_handle);
+        return (_handle <= cd._handle);
     }
 
     bool operator>(const CurlDescriptor& cd) const
     {
-        return (m_handle > cd.m_handle);
+        return (_handle > cd._handle);
     }
 
     bool operator<(const CurlDescriptor& cd) const
     {
-        return (m_handle < cd.m_handle);
+        return (_handle < cd._handle);
     }
 
     bool operator!=(const CurlDescriptor& cd) const
     {
-        return (m_handle != cd.m_handle);
+        return (_handle != cd._handle);
     }
 
     CurlDescriptor& operator=(const CurlDescriptor& cd)
@@ -102,101 +103,102 @@ public:
             return *this;   //TODO: investigate why logical rather than pointer equivalence was used - maybe just an oversight
         }
 
-        this->m_handle = cd.m_handle;
-        this->m_resultCode = cd.m_resultCode;
+        this->_handle = cd._handle;
+        this->_resultCode = cd._resultCode;
         //TODO: sanely copy the header list
-        this->m_headerList = NULL;
-        this->m_httpResultCode = cd.m_httpResultCode;
-        this->m_httpConnectCode = cd.m_httpConnectCode;
+        this->headerList = NULL;
+        this->_httpResultCode = cd._httpResultCode;
+        this->_httpConnectCode = cd._httpConnectCode;
         return *this;
     }
 
-    CURL* getHandle()
+    CURL * getHandle()
     {
-        return m_handle;
+        return _handle;
     }
 
-    CURL* setHandle(CURL * newHandle)
+    CURL * setHandle(CURL * newHandle)
     {
-        CURL * oldHandle = m_handle;
-        m_handle = newHandle;
+        CURL * oldHandle = _handle;
+        _handle = newHandle;
         return oldHandle;
     }
 
-    struct curl_slist* getHeaderList()
+    struct curl_slist * getHeaderList()
     {
-        return m_headerList;
+        return headerList;
     }
 
-    struct curl_slist* setHeaderList(struct curl_slist * newHeaderList)
+    struct curl_slist * setHeaderList(struct curl_slist * newHeaderList)
     {
-        struct curl_slist * tmp = m_headerList;
-        m_headerList = newHeaderList;
+        struct curl_slist * tmp = headerList;
+        headerList = newHeaderList;
         return tmp;
     }
 
     CURLcode getResultCode()
     {
-        return m_resultCode;
+        return _resultCode;
     }
 
     CURLcode setResultCode(CURLcode resultCode)
     {
-        CURLcode tmp = m_resultCode;
-        m_resultCode = resultCode;
+        CURLcode tmp = _resultCode;
+        _resultCode = resultCode;
         return tmp;
     }
 
     long getHttpResultCode()
     {
-        return m_httpResultCode;
+        return _httpResultCode;
     }
 
     long setHttpResultCode(long httpResultCode)
     {
-        long tmp = m_httpResultCode;
-        m_httpResultCode = httpResultCode;
+        long tmp = _httpResultCode;
+        _httpResultCode = httpResultCode;
         return tmp;
     }
 
     long getHttpConnectCode()
     {
-        return m_httpConnectCode;
+        return _httpConnectCode;
     }
 
     long setHttpConnectCode(long httpConnectCode)
     {
-        long tmp = m_httpConnectCode;
-        m_httpConnectCode = httpConnectCode;
+        long tmp = _httpConnectCode;
+        _httpConnectCode = httpConnectCode;
         return tmp;
     }
 
 private:
-    CURL* m_handle;
-    struct curl_slist* m_headerList;
-    CURLcode m_resultCode;
-    long m_httpResultCode;
-    long m_httpConnectCode;
+    CURL * _handle;
+    struct curl_slist * headerList;
+    CURLcode _resultCode;
+    long _httpResultCode;
+    long _httpConnectCode;
 };
 
 class DownloadTask {
+
 public:
-    unsigned long m_ticket;
-    std::string m_destPath;
-    std::string m_destFile;
-    std::string m_url;
-    std::string m_cookieHeader;
-    std::string m_detectedMIMEType;
-    std::string m_authToken;
-    std::string m_deviceId;
+    unsigned long ticket;
+    std::string destPath;
+    std::string destFile;
+    std::string url;
+    std::string cookieHeader;
+    std::string detectedMIMEType;
+    std::string authToken;
+    std::string deviceId;
 
-    std::string m_downloadPrefix;
-    bool m_opt_keepOriginalFilenameOnRedirect;
+    std::string downloadPrefix;
+    bool opt_keepOriginalFilenameOnRedirect;
 
-    uint64_t m_initialOffsetBytes;
-    uint64_t m_bytesCompleted;
-    uint64_t m_bytesTotal;
-    std::pair<uint64_t, uint64_t> m_rangeSpecified;
+    uint64_t initialOffsetBytes;
+    uint64_t bytesCompleted;
+    uint64_t bytesTotal;
+    std::pair<uint64_t, uint64_t> rangeSpecified;
 
     DownloadTask();
     ~DownloadTask();
@@ -207,46 +209,47 @@ public:
 
     void setLocationHeader(const std::string& s)
     {
-        m_httpHeaderLocation = s;
+        httpHeader_Location = s;
     }
     void setUpdateInterval(uint64_t interval = 0);
 
     // functions for counting maximum redirections.
     int getRemainingRedCounts()
     {
-        return m_remainingRedCounts;
+        return remainingRedCounts;
     }
 
     void decreaseRedCounts()
     {
-        m_remainingRedCounts--;
+        remainingRedCounts--;
     }
 
     void setRemainingRedCounts(const int currentRedCounts)
     {
-        m_remainingRedCounts = currentRedCounts;
+        remainingRedCounts = currentRedCounts;
     }
 
     //the following do NOT go into the json record of the task
-    uint64_t m_lastUpdateAt;          // sets the bytemark at which the last subscription update was sent
-    uint64_t m_updateInterval;
-    CurlDescriptor m_curlDesc;
-    FILE* m_fp;
-    bool m_isQueued;
-    std::string m_httpHeaderLocation; //for 301/302 Redirect codes, unused otherwise
-    int m_numErrors;
-    std::string m_ownerId;
-    std::string m_connectionName;
-    bool m_canHandlePause;
-    bool m_autoResume;
-    bool m_appendTargetFile;
+    uint64_t lastUpdateAt;          // sets the bytemark at which the last subscription update was sent
+    uint64_t updateInterval;
+    int applicationPackage;     //  > 0 if the download represents an application package
+    CurlDescriptor curlDesc;
+    FILE * fp;
+    bool queued;
+    std::string httpHeader_Location; //for 301/302 Redirect codes, unused otherwise
+    int numErrors;
+    std::string ownerId;
+    std::string connectionName;
+    bool canHandlePause;
+    bool autoResume;
+    bool appendTargetFile;
 
     // rfc2616 (HTTP/1.1) recommends maximum of five redirections.
     static const int MAXREDIRECTIONS = 5;
 
 private:
     // Remaining redirection counts
-    int m_remainingRedCounts;
+    int remainingRedCounts;
 };
 
 #endif /*BASE_DOWNLOADTASK_H_*/

@@ -42,6 +42,20 @@ bool deleteFile(const char* filePath)
     return (unlink(filePath) == 0);
 }
 
+bool filecopy(const std::string& srcFile, const std::string& destFile)
+{
+    std::ifstream s;
+    std::ofstream d;
+    s.open(srcFile.c_str(), std::ios::binary);
+    d.open(destFile.c_str(), std::ios::binary);
+    if (!s.is_open() || !d.is_open())
+        return false;
+    d << s.rdbuf();
+    s.close();
+    d.close();
+    return true;
+}
+
 bool doesExistOnFilesystem(const char * pathAndFile)
 {
 
@@ -107,6 +121,22 @@ int splitFileAndPath(const std::string& srcPathAndFile, std::string& pathPart, s
     return s;
 }
 
+int splitFileAndExtension(const std::string& srcFileAndExt, std::string& filePart, std::string& extensionPart)
+{
+    std::vector<std::string> parts;
+    int s = splitStringOnKey(parts, srcFileAndExt, std::string("."));
+    if (s == 1) {
+        //only file part; no extension
+        filePart = parts.at(0);
+    } else if (s >= 2) {
+        filePart += parts.at(0);
+        for (int i = 1; i < s - 1; i++)
+            filePart += std::string(".") + parts.at(i);
+        extensionPart = parts.at(s - 1);
+    }
+    return s;
+}
+
 int splitStringOnKey(std::vector<std::string>& returnSplitSubstrings, const std::string& baseStr, const std::string& delims)
 {
     std::string::size_type start = 0;
@@ -134,6 +164,29 @@ int splitStringOnKey(std::vector<std::string>& returnSplitSubstrings, const std:
     }
 
     return i;
+}
+
+bool isNonErrorProcExit(int ecode, int normalCode)
+{
+
+    if (!WIFEXITED(ecode))
+        return false;
+    if (WEXITSTATUS(ecode) != normalCode)
+        return false;
+
+    return true;
+}
+
+//Should follow conventions for virtualHost naming in webkit: WebCore/platform/KURL.cpp
+//CAUTION: modifying this to return strange paths is potentially dangerous. See ApplicationInstaller.cpp "remove" case where this fn is used
+std::string getHtml5DatabaseFolderNameForApp(const std::string& appId, std::string appFolderPath)
+{
+    if (appFolderPath.length() == 0)
+        return std::string("");
+
+    replace(appFolderPath.begin(), appFolderPath.end(), '/', '.');
+    std::string r = std::string("file_") + appFolderPath + std::string("_0");
+    return r;
 }
 
 int postSubscriptionUpdate(const std::string& key, const std::string& postMessage, LSHandle * serviceHandle)

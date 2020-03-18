@@ -39,17 +39,17 @@ private:
     template<typename T>
     class AsyncCall: public IAsyncCall {
     public:
-        AsyncCall(T _func)
-            : m_func(_func)
+        AsyncCall(T _func) :
+                func(_func)
         {
         }
 
         void Call()
         {
-            m_func();
+            func();
         }
     private:
-        T m_func;
+        T func;
     };
 
 public:

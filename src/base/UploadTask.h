@@ -32,40 +32,35 @@ class PostItem {
 public:
 
     enum ItemType {
-        File,
-        Value,
-        Buffer
+        File, Value, Buffer
     };
 
-    std::string m_key;
-    ItemType m_type;
-    std::string m_data;
-    std::string m_contentType;
+    std::string _key;
+    ItemType _type;
+    std::string _data;
+    std::string _contentType;
 
-    PostItem(const std::string& key, const std::string& data, ItemType type, const std::string& contentType)
-        : m_key(key),
-          m_type(type),
-          m_data(data),
-          m_contentType(contentType)
+    PostItem(const std::string& key, const std::string& data, ItemType type, const std::string& contentType) :
+            _key(key), _type(type), _data(data), _contentType(contentType)
     {
     }
 
     PostItem(const PostItem& c)
     {
-        m_key = c.m_key;
-        m_type = c.m_type;
-        m_data = c.m_data;
-        m_contentType = c.m_contentType;
+        _key = c._key;
+        _type = c._type;
+        _data = c._data;
+        _contentType = c._contentType;
     }
 
     PostItem& operator=(const PostItem& c)
     {
         if (&c == this)
             return *this;
-        m_key = c.m_key;
-        m_type = c.m_type;
-        m_data = c.m_data;
-        m_contentType = c.m_contentType;
+        _key = c._key;
+        _type = c._type;
+        _data = c._data;
+        _contentType = c._contentType;
         return *this;
     }
 };
@@ -145,8 +140,8 @@ public:
     {
         return m_replyLocationHeader;
     }
-
 private:
+
     UploadTask()
     {
     }
@@ -181,6 +176,7 @@ private:
     CURLcode m_curlResultCode;
     uint32_t m_httpResultCode;
 
+    static uint32_t s_genid;
     std::string m_uploadResponse;
     std::string m_replyLocationHeader;
 };
