@@ -396,7 +396,7 @@ int DownloadManager::download (const std::string& caller,
                 //LOG_DEBUG ("file of name %s or %s exists, will rename", finalFilePath.c_str(), tmpFilePath.c_str());
 
                 // file does exist. make a unique file adding [x] before the extension
-                unsigned int extPos = task->destFile.rfind ('.');
+                size_t extPos = task->destFile.rfind ('.');
                 int addExt = 0;
                 std::string fileName, fileExt;
                 if (extPos == std::string::npos)  {
@@ -1306,7 +1306,7 @@ size_t DownloadManager::cbHeader(CURL * taskHandle,size_t headerSize,const char 
 
     ////LOG_DEBUG ("cbHeader(): %s\n",header.c_str());
     //find the :
-    unsigned int labelendpos;
+    size_t labelendpos;
     if ((labelendpos = header.find(":",0)) == std::string::npos) {
         //LOG_DEBUG ("%s: header string = %s (Function-Exit-Early)",__FUNCTION__,header.c_str());
         return headerSize;
@@ -1501,8 +1501,8 @@ size_t DownloadManager::cbWriteEvent (CURL * taskHandle,size_t payloadSize,unsig
     }
 
     if ((task->fp == NULL) || (task->numErrors >= DOWNLOADMANAGER_ERRORTHRESHOLD)) {
-        LOG_WARNING_PAIRS (LOGID_EXCEED_ERROR_THRESHOLD, 2, PMLOGKFV("total bytes", "%u", nwritten),
-                                                            PMLOGKFV("payload size", "%u", payloadSize),
+        LOG_WARNING_PAIRS (LOGID_EXCEED_ERROR_THRESHOLD, 2, PMLOGKFV("total bytes", "%zu", nwritten),
+                                                            PMLOGKFV("payload size", "%zu", payloadSize),
                                                             "this task will be discarded, marked as 'removed'");
         //null file pointer? or num errors during this transfer was too high... this download isn't going anywhere...complete it
         _task->m_remove = true;
