@@ -67,8 +67,6 @@ public:
     bool            dbg_useStatfsFake;
     uint64_t        dbg_statfsFakeFreeSizeBytes;
 
-    static DownloadSettings*  Settings();
-
 private:
     void load();
     DownloadSettings();

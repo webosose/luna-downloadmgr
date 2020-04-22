@@ -71,8 +71,8 @@ public:
 
     static DownloadHistoryDb* instance();
 
-    bool addHistory(unsigned long ticket,const std::string& caller,const std::string interface, const std::string& state,const std::string& downloadRecordString);
-    bool addHistory(const DownloadHistory& history);
+    void addHistory(unsigned long ticket,const std::string& caller,const std::string interface, const std::string& state,const std::string& downloadRecordString);
+    void addHistory(const DownloadHistory& history);
 
     int getDownloadHistoryFull(unsigned long ticket,std::string& r_caller,std::string& r_interface, std::string& r_state,std::string& r_history);
     std::string getDownloadHistoryRecord(unsigned long ticket);
@@ -82,7 +82,7 @@ public:
     int getDownloadHistoryRecordsForInterface(const std::string& interface, std::vector<DownloadHistory>& r_historyRecords);
     int getDownloadHistoryRecordsForStateAndInterface(const std::string& state,const std::string& interface,std::vector<DownloadHistory>& r_historyRecords);
 
-    int changeStateForAll(const std::string& oldState,const std::string& newState);
+    void changeStateForAll(const std::string& oldState,const std::string& newState);
 
     int clear();
     void clearByTicket(const unsigned long ticket);

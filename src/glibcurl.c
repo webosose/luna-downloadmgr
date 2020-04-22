@@ -381,6 +381,7 @@ void glibcurl_init() {
 
   /* Init rest of our data */
   memset(&curlSrc->lastPollFd, 0, sizeof(curlSrc->lastPollFd));
+
   for (fd = 1; fd <= GLIBCURL_FDMAX; ++fd)
     curlSrc->lastPollFd[fd].fd = fd;
   curlSrc->lastPollFdMax = 0;
@@ -594,7 +595,9 @@ gboolean check(GSource* source) {
   }
 
   struct timespec currTime;
-  clock_gettime(CLOCK_MONOTONIC, &currTime);
+  if (clock_gettime(CLOCK_MONOTONIC, &currTime) != 0) {
+      LOG_DEBUG ("Function clock_gettime() failed");
+  }
 
   // Curl wants us to call it regularly even if there is no data available
   if (((currTime.tv_sec - s_timeAtLastDispatch.tv_sec) * 1000 +
@@ -614,7 +617,9 @@ gboolean dispatch(GSource* source, GSourceFunc callback,
   assert(source == &curlSrc->source);
   assert(curlSrc->multiHandle != 0);
 
-  clock_gettime(CLOCK_MONOTONIC, &s_timeAtLastDispatch);
+  if (clock_gettime(CLOCK_MONOTONIC, &s_timeAtLastDispatch) != 0) {
+      LOG_DEBUG ("Function clock_gettime() failed");
+  }
 
   do {
     x = curl_multi_perform(curlSrc->multiHandle, &curlSrc->callPerform);

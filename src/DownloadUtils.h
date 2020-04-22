@@ -30,7 +30,6 @@ template <class T> std::string ConvertToString(const T &arg) {
     return(out.str());
 }
 
-bool  deleteFile(const char* filePath);
 bool filecopy (const std::string& srcFile, const std::string& destFile);
 std::string trimWhitespace(const std::string& s,const std::string& drop = "\r\n\t ");
 int splitFileAndPath(const std::string& srcPathAndFile,std::string& pathPart,std::string& filePart);

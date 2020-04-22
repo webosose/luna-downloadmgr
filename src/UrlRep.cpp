@@ -62,7 +62,7 @@ UrlRep UrlRep::fromUrl(const char* uri)
         urlRep.resource = URI_TEXT_RANGE_TO_STRING((uriA.pathTail)->text);
 
     if (uriA.query.first) {
-        uriDissectQueryMallocA(&queryList, &queryCount,
+        (void) uriDissectQueryMallocA(&queryList, &queryCount,
                                uriA.query.first,
                                uriA.query.afterLast);
 

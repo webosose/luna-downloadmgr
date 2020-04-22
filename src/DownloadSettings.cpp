@@ -74,19 +74,6 @@ static bool localSpaceOnFs(const std::string& path,uint64_t& spaceFreeKB,uint64_
 
 unsigned long MemStringToBytes( const char* ptr );
 
-static DownloadSettings* s_settings = 0;
-
-DownloadSettings* DownloadSettings::Settings()
-{
-    if( s_settings )
-        return s_settings;
-
-    s_settings = new DownloadSettings();
-    s_settings->load();
-
-    return s_settings;
-}
-
 //static
 bool    DownloadSettings::validateDownloadPath(const std::string& path) {
 
@@ -128,6 +115,7 @@ DownloadSettings::DownloadSettings()
       , dbg_useStatfsFake(false)
       , dbg_statfsFakeFreeSizeBytes(0)
 {
+    load();
 }
 
 DownloadSettings::~DownloadSettings()
@@ -325,7 +313,9 @@ void DownloadSettings::load( )
 
     g_key_file_free( keyfile );
 
-    g_mkdir_with_parents(downloadPathMedia.c_str(),0755);
+    if (g_mkdir_with_parents(downloadPathMedia.c_str(),0755) == -1) {
+        LOG_DEBUG ("Function g_mkdir_with_parents() failed");
+    }
 }
 
 

@@ -25,6 +25,7 @@
 
 #include "DownloadHistoryDb.h"
 #include "Logging.h"
+#include "Utils.h"
 
 #define VALID_SCHEMA_VER    "system-2"
 ///////////////////// DOWNLOAD HISTORY DB //////////////////////////////////////////////
@@ -89,7 +90,7 @@ bool DownloadHistoryDb::getMaxKey(unsigned long& maxKey) {
 Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         g_free(queryStr);
@@ -102,36 +103,42 @@ Done:
     return false;
 }
 
-bool DownloadHistoryDb::addHistory(unsigned long ticket,const std::string& caller,const std::string interface,const std::string& state, const std::string& downloadRecordString)
+void DownloadHistoryDb::addHistory(unsigned long ticket,const std::string& caller,const std::string interface,const std::string& state, const std::string& downloadRecordString)
 {
-    if (!m_dlDb)
-        return false;
+    if (!m_dlDb) {
+        LOG_DEBUG ("Function addHistory() failed: no m_dlDb");
+        return;
+    }
 
-    if (downloadRecordString.empty())
-        return false;
+    if (downloadRecordString.empty()) {
+        LOG_DEBUG ("Function addHistory() failed: empty downloadRecordString");
+        return;
+    }
 
     gchar* queryStr = sqlite3_mprintf("REPLACE INTO DownloadHistory "
                                       "VALUES (%lu, %Q, %Q, %Q, %Q)",
                                       ticket, caller.c_str(),interface.c_str(),state.c_str(),downloadRecordString.c_str());
-    if (!queryStr)
-        return false;
+    if (!queryStr) {
+        LOG_DEBUG ("Function addHistory() failed: wrong return of sqlite3_mprintf()");
+        return;
+    }
 
     int ret = sqlite3_exec(m_dlDb, queryStr, NULL, NULL, NULL);
 
     if (ret) {
         LOG_DEBUG ("Failed to execute query: %s", queryStr);
         sqlite3_free(queryStr);
-        return false;
+        return;
     }
 
     sqlite3_free(queryStr);
 
-    return true;
+    return;
 }
 
-bool DownloadHistoryDb::addHistory(const DownloadHistory& history)
+void DownloadHistoryDb::addHistory(const DownloadHistory& history)
 {
-    return addHistory(history.m_ticket,history.m_owner,history.m_interface,history.m_state,history.m_downloadRecordJsonString);
+    addHistory(history.m_ticket,history.m_owner,history.m_interface,history.m_state,history.m_downloadRecordJsonString);
 }
 
 int DownloadHistoryDb::getDownloadHistoryFull(unsigned long ticket,std::string& r_caller,std::string& r_interface,std::string& r_state,std::string& r_history)
@@ -183,7 +190,7 @@ int DownloadHistoryDb::getDownloadHistoryFull(unsigned long ticket,std::string& 
     Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         g_free(queryStr);
@@ -224,7 +231,7 @@ std::string DownloadHistoryDb::getDownloadHistoryRecord(unsigned long ticket)
 Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         g_free(queryStr);
@@ -276,7 +283,7 @@ int DownloadHistoryDb::getDownloadHistoryRecord(unsigned long ticket,DownloadHis
     Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         sqlite3_free(queryStr);
@@ -328,7 +335,7 @@ int DownloadHistoryDb::getDownloadHistoryRecordsForOwner(const std::string& owne
     Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         sqlite3_free(queryStr);
@@ -381,7 +388,7 @@ int DownloadHistoryDb::getDownloadHistoryRecordsForState(const std::string& stat
     Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         sqlite3_free(queryStr);
@@ -432,7 +439,7 @@ int DownloadHistoryDb::getDownloadHistoryRecordsForInterface(const std::string& 
     Done:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         sqlite3_free(queryStr);
@@ -483,7 +490,7 @@ int DownloadHistoryDb::getDownloadHistoryRecordsForStateAndInterface(const std::
     Done_getDownloadHistoryRecordsForStateAndInterface:
 
     if (statement)
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
 
     if (queryStr)
         sqlite3_free(queryStr);
@@ -491,12 +498,14 @@ int DownloadHistoryDb::getDownloadHistoryRecordsForStateAndInterface(const std::
     return rc;
 }
 
-int DownloadHistoryDb::changeStateForAll(const std::string& oldState,const std::string& newState)
+void DownloadHistoryDb::changeStateForAll(const std::string& oldState,const std::string& newState)
 {
     std::vector<DownloadHistory> historyRecords;
     int rc = 0;
-    if ((rc = getDownloadHistoryRecordsForState(oldState,historyRecords)) == 0)
-        return 0;       //none found
+    if ((rc = getDownloadHistoryRecordsForState(oldState,historyRecords)) == 0) {
+        LOG_DEBUG ("changeStateForAll(); No DownloadHistoryRecordsForState was found");
+        return;       //none found
+    }
 
     for (std::vector<DownloadHistory>::iterator it = historyRecords.begin();it != historyRecords.end();++it)
     {
@@ -505,7 +514,7 @@ int DownloadHistoryDb::changeStateForAll(const std::string& oldState,const std::
         ++rc;
     }
 
-    return rc;
+    return;
 }
 
 bool DownloadHistoryDb::openDownloadHistoryDb(std::string& errmsg)
@@ -517,7 +526,9 @@ bool DownloadHistoryDb::openDownloadHistoryDb(std::string& errmsg)
     }
 
     gchar* dlDirPath = g_path_get_dirname(s_dlDbPath);
-    g_mkdir_with_parents(dlDirPath, 0755);
+    if (g_mkdir_with_parents(dlDirPath, 0755) == -1) {
+        LOG_DEBUG ("Function g_mkdir_with_parents() failed");
+    }
     g_free(dlDirPath);
 
     int ret = sqlite3_open(s_dlDbPath, &m_dlDb);
@@ -528,7 +539,7 @@ bool DownloadHistoryDb::openDownloadHistoryDb(std::string& errmsg)
 
     if (!checkTableConsistency()) {
         errmsg = "Failed to create DownloadHistory table";
-        sqlite3_close(m_dlDb);
+        (void) sqlite3_close(m_dlDb);
         m_dlDb = 0;
         return false;
     }
@@ -542,7 +553,7 @@ bool DownloadHistoryDb::openDownloadHistoryDb(std::string& errmsg)
             " history TEXT);", NULL, NULL, NULL);
     if (ret) {
         errmsg = "Failed to create DownloadHistory table";
-        sqlite3_close(m_dlDb);
+        (void) sqlite3_close(m_dlDb);
         m_dlDb = 0;
         return false;
     }
@@ -605,7 +616,7 @@ bool DownloadHistoryDb::checkTableConsistency()
         std::string version;
         if (ver != NULL)
             version = ver;
-        sqlite3_finalize(statement);
+        (void) sqlite3_finalize(statement);
         if (version != VALID_SCHEMA_VER) {
             LOG_DEBUG ("Database is the wrong schema version [%s], and should be [%s]",version.c_str(),VALID_SCHEMA_VER);
             goto Recreate;
@@ -617,7 +628,7 @@ bool DownloadHistoryDb::checkTableConsistency()
 
 Recreate:
 
-    sqlite3_finalize(statement);
+    (void) sqlite3_finalize(statement);
 
     (void) sqlite3_exec(m_dlDb, "DROP TABLE DownloadHistory", NULL, NULL, NULL);
     ret = sqlite3_exec(m_dlDb,
@@ -674,7 +685,7 @@ bool DownloadHistoryDb::integrityCheckDb()
             integrityOk = true;
     }
 
-    sqlite3_finalize(statement);
+    (void) sqlite3_finalize(statement);
 
     if (!integrityOk)
         goto CorruptDb;
@@ -687,8 +698,9 @@ CorruptDb:
 
     LOG_DEBUG ("%s: integrity check failed. recreating database", __PRETTY_FUNCTION__);
 
-    sqlite3_close(m_dlDb);
-    unlink(s_dlDbPath);
+    (void) sqlite3_close(m_dlDb);
+    std::string pathTemp = std::string(s_dlDbPath);
+    Utils::remove_file(pathTemp);
 
     ret = sqlite3_open_v2 (s_dlDbPath, &m_dlDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
     if (ret) {
@@ -706,7 +718,9 @@ int DownloadHistoryDb::clear()
 
     (void) sqlite3_exec(m_dlDb, "DROP TABLE DownloadHistory", NULL, NULL, NULL);
 
-    checkTableConsistency();        //this will recreate it
+    if (!checkTableConsistency()) {
+        LOG_DEBUG ("Function checkTableConsistency() failed");
+    }
 
     return DOWNLOADHISTORYDB_HISTORYSTATUS_OK;
 }

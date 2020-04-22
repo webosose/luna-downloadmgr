@@ -35,14 +35,6 @@
 #include <string>
 #include <algorithm>
 
-bool deleteFile(const char* filePath)
-{
-    if (!filePath)
-        return false;
-    LOG_DEBUG (" deleteFile - file path - %s",filePath );
-    return (unlink(filePath) == 0);
-}
-
 bool filecopy (const std::string& srcFile, const std::string& destFile)
 {
     std::ifstream s;
@@ -272,7 +264,9 @@ uint32_t removeSubscriptions(const std::string& key,LSHandle * serviceHandle)
         retVal = LSSubscriptionAcquire(serviceHandle, key.c_str(), &iter, &lserror);
         if (retVal) {
             while (LSSubscriptionHasNext(iter)) {
-                LSSubscriptionNext(iter);   //..or else remove won't work
+                if (!LSSubscriptionNext(iter)) {
+                    break;
+                }
                 LSSubscriptionRemove(iter);
                     ++rc;
             }

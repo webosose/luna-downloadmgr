@@ -55,18 +55,17 @@ int main( int argc, char** argv)
     //g_thread_init is deprecated since glib 2.0
     //g_thread_init(NULL);
 
-    // Load DownloadSettings (first!)
-    DownloadSettings* settings = DownloadSettings::Settings();
-
-    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'Fake1x' is %s", __FUNCTION__, ( settings->dbg_fake1xForWan ? "ON!" : "OFF" ));
-    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'AutoResume' is %s", __FUNCTION__, ( settings->autoResume ? "ON!" : "OFF" ));
+    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'Fake1x' is %s", __FUNCTION__, ( DownloadSettings::instance().dbg_fake1xForWan ? "ON!" : "OFF" ));
+    LOG_DEBUG ("%s: [INSTALLER] [DOWNLOADER] : Debug setting 'AutoResume' is %s", __FUNCTION__, ( DownloadSettings::instance().autoResume ? "ON!" : "OFF" ));
 
     // Initialize the Download Manager
     DownloadManager::instance().init();
 
 #ifdef WEBOS_TARGET_DISTRO_VARIANT_LITE
     // Quits GMainLoop if there are no activity over time interval
-    g_timeout_add_seconds(WATCHDOG_TIMEOUT, watchdog_handler, static_cast<gpointer>(&DownloadManager::instance()));
+    if (g_timeout_add_seconds(WATCHDOG_TIMEOUT, watchdog_handler, static_cast<gpointer>(&DownloadManager::instance())) < 0) {
+        LOG_DEBUG ("Function g_timeout_add_seconds() failed");
+    }
 #endif
 
     g_main_loop_run (gMainLoop);

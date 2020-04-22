@@ -74,32 +74,10 @@ static int rmdir_helper(const char *path, const struct stat *pStat, int flag, st
     return 0;
 }
 
-bool Utils::remove_dir(const std::string &path)
+void Utils::remove_file(const std::string &path)
 {
-    struct stat oStat;
-    memset(&oStat, 0, sizeof(oStat));
-    if (lstat(path.c_str(), &oStat) == -1)
-        return false;
-
-    if (S_ISDIR(oStat.st_mode))
-    {
-        int flags = FTW_DEPTH;
-        if (::nftw(path.c_str(), rmdir_helper, 10, flags) == -1)
-        {
-            return false;
-        }
-    }
-    else
-        return false;
-
-    return true;
-}
-
-bool Utils::remove_file(const std::string &path)
-{
-    if (::unlink(path.c_str()) == -1)
-        return false;
-    return true;
+    (void) ::unlink(path.c_str());
+    return;
 }
 
 gboolean Utils::cbAsync(gpointer data)

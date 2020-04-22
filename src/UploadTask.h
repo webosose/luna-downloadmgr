@@ -99,13 +99,12 @@ public:
     const std::string& getReplyLocation() const { return m_replyLocationHeader; }
 private:
 
-    UploadTask() {};
-
+    UploadTask();
     //propagate into the object and store, postparts and contenttype, as they may be useful in case of redirects, or other transient problems
     UploadTask(const std::string& url,const std::string file,const std::string& data,uint32_t id,
             std::vector<PostItem> * postparts,const std::string& contenttype,CURL * p_curl);
     UploadTask& operator=(const UploadTask& c) { return *this;}
-    UploadTask(const UploadTask& c) {}
+    UploadTask(const UploadTask& c);
 
     static uint32_t genNewId();
 

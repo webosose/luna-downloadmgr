@@ -90,18 +90,18 @@ public:
     }
 
     long getHttpResultCode() { return _httpResultCode;}
-    long setHttpResultCode(long httpResultCode) {
+    void setHttpResultCode(long httpResultCode) {
         long tmp = _httpResultCode;
         _httpResultCode = httpResultCode;
-        return tmp;
+        return;
     }
 
     long getHttpConnectCode() { return _httpConnectCode;}
-    long setHttpConnectCode(long httpConnectCode)
+    void setHttpConnectCode(long httpConnectCode)
     {
         long tmp = _httpConnectCode;
         _httpConnectCode = httpConnectCode;
-        return tmp;
+        return;
     }
 
 private:

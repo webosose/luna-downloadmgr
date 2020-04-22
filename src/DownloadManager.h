@@ -126,13 +126,13 @@ public:
     int resumeDownload(const unsigned long ticket,const std::string& authToken,const std::string& deviceId,std::string& r_err);
     int resumeDownload(const DownloadHistoryDb::DownloadHistory& history,bool autoResume,std::string& r_err);
     int resumeDownload(const DownloadHistoryDb::DownloadHistory& history,bool autoResume,const std::string& authToken,const std::string& deviceId,std::string& r_err);
-    int resumeAll();
-    int resumeAllForInterface(Connection interface, bool autoResume);
     int resumeDownloadOnAlternateInterface(DownloadHistoryDb::DownloadHistory& history,Connection newInterface,bool autoResume);
-    int resumeMultipleOnAlternateInterface(Connection oldInterface,Connection newInterface,bool autoResume);
+    void resumeAll();
+    void resumeAllForInterface(Connection interface, bool autoResume);
+    void resumeMultipleOnAlternateInterface(Connection oldInterface,Connection newInterface,bool autoResume);
     int pauseDownload(const unsigned long ticket,bool allowQueuedToStart=true);
-    int pauseAll();
-    int pauseAllForInterface(Connection interface);
+    void pauseAll();
+    void pauseAllForInterface(Connection interface);
 
 #define SWAPTOIF_ERROR_INVALIDIF        -1
 #define SWAPTOIF_ERROR_NOSUCHTICKET     -2
@@ -231,7 +231,7 @@ public:
     static bool msmFsckingCallback(LSHandle* handle, LSMessage* message, void* ctxt);
 
     static bool diskSpaceAtStopMarkLevel();
-    bool init();
+    void init();
 
 private:
 
@@ -289,7 +289,7 @@ private:
     void postUploadStatus(uint32_t id,const std::string& sourceFile,const std::string& url,bool completed,
                 CURLcode curlCode,uint32_t httpCode,const std::string& responseString, const std::string& location);
 
-    bool requestWakeLock(bool status);
+    void requestWakeLock(bool status);
     static bool cbRequestWakeLock(LSHandle* lshandle, LSMessage *msg, void *user_data);
 
     LSHandle * m_serviceHandle;
@@ -318,7 +318,7 @@ private:
     TransferTask * getTask(CurlDescriptor& cd);
 
     void startupGlibCurl();
-    bool shutdownGlibCurl();
+    void shutdownGlibCurl();
 
     DownloadManager();
     ~DownloadManager();

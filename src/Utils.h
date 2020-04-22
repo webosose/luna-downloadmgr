@@ -54,11 +54,8 @@ public:
     //! Make directory
     static bool make_dir(const std::string &path, bool withParent = true);
 
-    //! Remove directory recursive
-    static bool remove_dir(const std::string &path);
-
     //! Remove file
-    static bool remove_file(const std::string &path);
+    static void remove_file(const std::string &path);
 
     //! Make std::string for type T
     template <class T>

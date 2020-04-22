@@ -50,8 +50,11 @@ static gboolean exit_on_idle(gpointer ctx)
 
 gboolean watchdog_handler(gpointer ctx)
 {
-    if (is_idle(ctx))
-        g_timeout_add_seconds(WATCHDOG_TIMEOUT, exit_on_idle, ctx);
+    if (is_idle(ctx)) {
+        if (g_timeout_add_seconds(WATCHDOG_TIMEOUT, exit_on_idle, ctx) < 0) {
+            LOG_DEBUG ("Function g_timeout_add_seconds() failed");
+        }
+    }
 
     return TRUE;
 }

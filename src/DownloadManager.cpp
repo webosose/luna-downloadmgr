@@ -37,6 +37,7 @@
 #include "Logging.h"
 #include "Time.h"
 #include "JUtil.h"
+#include "Utils.h"
 
 #define TIMEOUT_INTERVAL_SEC 10
 
@@ -63,7 +64,9 @@ size_t DownloadManager::cbCurlHeaderInfo(void * ptr,size_t size,size_t nmemb,voi
 }
 
 void DownloadManager::cbGlibcurl(void* data) {
-    DownloadManager::instance().cbGlib();
+    if (DownloadManager::instance().cbGlib() < 0) {
+        LOG_DEBUG ("Function cbGlib() failed");
+    }
 }
 
 int DownloadManager::cbCurlSetSocketOptions(void *clientp,curl_socket_t curlfd,curlsocktype purpose) {
@@ -90,10 +93,10 @@ DownloadManager::DownloadManager()
     m_wifiConnectionStatus(InetConnectionUnknownState) ,
     m_btpanConnectionStatus(InetConnectionUnknownState),
     m_wiredConnectionStatus(InetConnectionUnknownState),
-    m_wanInterfaceName(DownloadSettings::Settings()->wanInterfaceName),
-    m_wifiInterfaceName(DownloadSettings::Settings()->wifiInterfaceName),
-    m_btpanInterfaceName(DownloadSettings::Settings()->btpanInterfaceName),
-    m_wiredInterfaceName(DownloadSettings::Settings()->wiredInterfaceName),
+    m_wanInterfaceName(DownloadSettings::instance().wanInterfaceName),
+    m_wifiInterfaceName(DownloadSettings::instance().wifiInterfaceName),
+    m_btpanInterfaceName(DownloadSettings::instance().btpanInterfaceName),
+    m_wiredInterfaceName(DownloadSettings::instance().wiredInterfaceName),
     m_serviceHandle(NULL),
     m_storageDaemonToken(0),
     m_activeTaskCount(0),
@@ -117,16 +120,16 @@ DownloadManager::~DownloadManager()
     delete m_pDlDb;
 }
 
-bool DownloadManager::init()
+void DownloadManager::init()
 {
 
 #if !defined(TARGET_DESKTOP)
-    if (DownloadSettings::Settings()->downloadPathMedia.size()) {
-        m_downloadPath = DownloadSettings::Settings()->downloadPathMedia;
+    if (DownloadSettings::instance().downloadPathMedia.size()) {
+        m_downloadPath = DownloadSettings::instance().downloadPathMedia;
     }
     else {
         m_downloadPath = "/media/internal/downloads/";
-        DownloadSettings::Settings()->downloadPathMedia = "/media/internal/downloads/";
+        DownloadSettings::instance().downloadPathMedia = "/media/internal/downloads/";
     }
     m_userDiskRootPath = "/media/internal/";
 #else
@@ -135,7 +138,9 @@ bool DownloadManager::init()
 #endif
 
     unsigned long maxKey = 0;
-    m_pDlDb->getMaxKey(maxKey);
+    if (!m_pDlDb->getMaxKey(maxKey)) {
+        LOG_DEBUG ("Function getMaxKey() failed");
+    }
 
     if (maxKey != 0) {
         s_ticketGenerator = maxKey+1;           //yes, i know...problem if maxKey = MAX_ULONG
@@ -150,7 +155,9 @@ bool DownloadManager::init()
         m_userDiskRootPath += "/";
 
     m_authCookie = "";
-    g_mkdir_with_parents(m_downloadPath.c_str(), 0755);
+    if (g_mkdir_with_parents(m_downloadPath.c_str(), 0755) == -1) {
+        LOG_DEBUG ("Function g_mkdir_with_parents() failed");
+    }
     //LOG_DEBUG ( "Download path is %s", m_downloadPath.c_str() );
 
     // RECOVERY: everything in the database that was marked "running" or "queued" , or "paused" , gets reassigned to "cancelled"
@@ -162,7 +169,7 @@ bool DownloadManager::init()
 
     this->startService();
 
-    return true;
+    return;
 }
 // DownloadManager::isValidOverridePath
 // Will check is the specified path is valid, and if necessary, create it
@@ -176,7 +183,9 @@ bool    DownloadManager::isValidOverridePath(const std::string& path) {
 
     //mkdir -p the path requested just in case
     //LOG_DEBUG ("executing g_mkdir on: %s\n",path.c_str());
-    g_mkdir_with_parents(path.c_str(), 0755);
+    if (g_mkdir_with_parents(path.c_str(), 0755) == -1) {
+        LOG_DEBUG ("Function g_mkdir_with_parents() failed");
+    }
     //LOG_DEBUG ("g_mkdir exit status = %d\n",exit_status);
 
     return true;
@@ -261,7 +270,7 @@ int DownloadManager::download (const std::string& caller,
                                                 PMLOGKS("deviceId",deviceId.empty() ?"Not-Available": deviceId.c_str()));
 
     // if the queue is already full, no point in continuing
-    if (m_queue.size() >= DownloadSettings::Settings()->maxDownloadManagerQueueLength) {
+    if (m_queue.size() >= DownloadSettings::instance().maxDownloadManagerQueueLength) {
         return DOWNLOADMANAGER_STARTSTATUS_QUEUEFULL;
     }
 
@@ -363,7 +372,7 @@ int DownloadManager::download (const std::string& caller,
 
     this->filesystemStatusCheck(spaceFreeKB,spaceTotalKB,NULL,&stopMarkReached);
 
-    if (DownloadSettings::Settings()->preemptiveFreeSpaceCheck)
+    if (DownloadSettings::instance().preemptiveFreeSpaceCheck)
     {
         if (stopMarkReached)        ///
         {
@@ -410,6 +419,7 @@ int DownloadManager::download (const std::string& caller,
                 std::stringstream newFileName;
                 std::stringstream newTempFile;
                 std::stringstream newFinalFile;
+
                 do {
                     ++ addExt;
                     newFileName.str("");
@@ -452,7 +462,9 @@ int DownloadManager::download (const std::string& caller,
             {
                 if (fseek(task->fp, range.first, SEEK_SET) != 0)
                 {
-                    fclose(task->fp);
+                    if (fclose(task->fp) != 0) {
+                        LOG_DEBUG ("Function fclose() failed");
+                    }
                     task->fp = NULL;
                 }
             }
@@ -466,14 +478,16 @@ int DownloadManager::download (const std::string& caller,
 
         std::string templateStr = task->destPath + std::string("fileXXXXXX");
         char * templateFileName = new char[templateStr.length()+2];
-        strcpy(templateFileName,templateStr.c_str());
+        strncpy(templateFileName,templateStr.c_str(),sizeof(templateStr.length()+2));
         mode_t mask = umask(S_IRWXG | S_IRWXO);
         int fd = mkstemp(templateFileName);
-        umask(mask);
+        (void) umask(mask);
 
         task->destPath = "";
         task->destFile = "";
-        splitFileAndPath(std::string(templateFileName),task->destPath,task->destFile);
+        if (splitFileAndPath(std::string(templateFileName),task->destPath,task->destFile) < 0) {
+            LOG_DEBUG ("Wrong file path: %s", templateFileName);
+        }
         delete[] templateFileName;
 
         if (fd == -1) {
@@ -504,8 +518,9 @@ int DownloadManager::download (const std::string& caller,
         LOG_DEBUG ("curl set opt: CURLOPT_URL failed [%d]\n",curlSetOptRc);
 
     if ( !(task->cookieHeader.empty()) &&
-        (curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_COOKIE,task->cookieHeader.c_str())) != CURLE_OK )
-        LOG_DEBUG ("curl set opt: CURLOPT_COOKIE failed [%d]\n",curlSetOptRc);
+        (curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_COOKIE,task->cookieHeader.c_str())) != CURLE_OK) {
+            LOG_DEBUG ("curl set opt: CURLOPT_COOKIE failed [%d]\n",curlSetOptRc);
+        }
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_NOSIGNAL,1L)) != CURLE_OK )
         LOG_DEBUG ("curl set opt: CURLOPT_NOSIGNAL failed [%d]\n",curlSetOptRc);
@@ -588,17 +603,23 @@ int DownloadManager::download (const std::string& caller,
         std::string deviceIdHeader =  std::string("Device-Id: ") + deviceId;
         slist = curl_slist_append(slist,authTokenHeader.c_str());
         slist = curl_slist_append(slist,deviceIdHeader.c_str());
-        curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist);
+        if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK) {
+            LOG_DEBUG ("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n",curlSetOptRc);
+        }
 
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK )
             LOG_DEBUG ("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n",curlSetOptRc);
 
-        task->curlDesc.setHeaderList(slist);
+        if (!task->curlDesc.setHeaderList(slist)) {
+            LOG_DEBUG ("Function setHeaderList() failed");
+        }
         task->deviceId = deviceId;
         task->authToken = authToken;
         //LOG_DEBUG ("added deviceId %s and authToken %s", task->deviceId.c_str(), task->authToken.c_str());
     }
-    task->curlDesc.setHandle(curlHandle);
+    if (!task->curlDesc.setHandle(curlHandle)) {
+        LOG_DEBUG ("Function setHandle() failed");
+    }
 
     //map the curl handle to the download task here, so that we can find the task in the callback
     m_handleMap[task->curlDesc]=p_ttask;
@@ -606,12 +627,14 @@ int DownloadManager::download (const std::string& caller,
     m_ticketMap[task->ticket]=task;
 
     // check whether to enqueue this or start the download immediately
-    if (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (m_activeTaskCount < DownloadSettings::instance().maxDownloadManagerConcurrent) {
         //add it to the pool of inprogress handles (this is all inside glib curl)
         m_activeTaskCount++;
         requestWakeLock(true);
         task->queued = false;
-        glibcurl_add(task->curlDesc.getHandle());
+        if (glibcurl_add(task->curlDesc.getHandle()) != 0) {
+            LOG_DEBUG ("Function glibcurl_add() failed");
+        }
         //LOG_DEBUG ("starting download of ticket [%lu] for url [%s]\n", task->ticket, task->url.c_str());
         m_pDlDb->addHistory(task->ticket,caller,task->connectionName,"running",task->toJSONString());
     } else {
@@ -762,7 +785,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     this->filesystemStatusCheck(spaceFreeKB,spaceTotalKB,NULL,&stopMarkReached);
 
     uint64_t remainSize = totalSize - completedSize;
-    if (DownloadSettings::Settings()->preemptiveFreeSpaceCheck)
+    if (DownloadSettings::instance().preemptiveFreeSpaceCheck)
     {
         if ((spaceFreeKB < (remainSize >> 10)) || (stopMarkReached))
         {
@@ -832,7 +855,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     //ok, it was interrupted, and its fields are valid. Create a new task for it, but with the original ticket number
 
     // if the queue is already full, no point in continuing
-    if (m_queue.size() >= DownloadSettings::Settings()->maxDownloadManagerQueueLength) {
+    if (m_queue.size() >= DownloadSettings::instance().maxDownloadManagerQueueLength) {
         return DOWNLOADMANAGER_RESUMESTATUS_QUEUEFULL;
     }
 
@@ -853,7 +876,9 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     if (fseek(fp,completedSize-initialOffset,SEEK_SET) != 0)
     {
         LOG_WARNING_PAIRS (LOGID_RESUME_FSEEK_FAIL, 1, PMLOGKFV("ptr", "%lu", ftell(fp)), "moving file ptr failed");
-        fclose(fp);
+        if (fclose(fp) != 0) {
+            LOG_DEBUG ("Function fclose() failed");
+        }
         r_err = "cannot open temp file: seek-set failed";
         return DOWNLOADMANAGER_RESUMESTATUS_CANNOTACCESSTEMP;
     }
@@ -989,11 +1014,15 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
         if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, slist)) != CURLE_OK )
             LOG_DEBUG ("curl set opt: CURLOPT_HTTPHEADER failed [%d]\n",curlSetOptRc);
 
-        p_dlTask->curlDesc.setHeaderList(slist);
+        if (!p_dlTask->curlDesc.setHeaderList(slist)) {
+            LOG_DEBUG ("Function setHeaderList() failed");
+        }
         p_dlTask->deviceId = deviceIdToUse;
         p_dlTask->authToken = authTokenToUse;
     }
-    p_dlTask->curlDesc.setHandle(curlHandle);
+    if (!p_dlTask->curlDesc.setHandle(curlHandle)) {
+        LOG_DEBUG ("Function setHandle() failed");
+    }
 
     //map the curl handle to the download task here, so that we can find the task in the callback
     m_handleMap[p_dlTask->curlDesc]=p_ttask;
@@ -1001,12 +1030,14 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     m_ticketMap[p_dlTask->ticket]=p_dlTask;
 
     // check whether to enqueue this or start the download immediately
-    if (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (m_activeTaskCount < DownloadSettings::instance().maxDownloadManagerConcurrent) {
         //add it to the pool of inprogress handles (this is all inside glib curl)
         m_activeTaskCount++;
         requestWakeLock(true);
         p_dlTask->queued = false;
-        glibcurl_add(p_dlTask->curlDesc.getHandle());
+        if (glibcurl_add(p_dlTask->curlDesc.getHandle()) != 0) {
+            LOG_DEBUG ("Function glibcurl_add() failed");
+        }
         //LOG_DEBUG ("starting (resuming) download of ticket [%lu] for url [%s] on interface [%s]\n", p_dlTask->ticket, p_dlTask->url.c_str(),p_dlTask->connectionName.c_str());
         m_pDlDb->addHistory(p_dlTask->ticket,p_dlTask->ownerId,p_dlTask->connectionName,"running",p_dlTask->toJSONString());
     } else {
@@ -1020,49 +1051,61 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
 
 }
 
-int DownloadManager::resumeAll()
+void DownloadManager::resumeAll()
 {
     //go through all interrupted downloads from the db and resume each
     std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
     std::string err;
     int rc=0;
 
-    if (!m_pDlDb)
-        return 0;
+    if (!m_pDlDb) {
+        LOG_DEBUG ("Function resumeAll() failed: No m_pDlDb");
+        return;
+    }
     LOG_DEBUG ("%s: [RESUME]",__FUNCTION__);
 
-    m_pDlDb->getDownloadHistoryRecordsForState("interrupted",interrupteds);
+    if (m_pDlDb->getDownloadHistoryRecordsForState("interrupted",interrupteds) == 0) {
+        LOG_DEBUG ("Function getDownloadHistoryRecordsForState() failed");
+    }
     for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin();it != interrupteds.end();++it)
     {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
-        resumeDownload(*it,false,err);
+        int rcTemp = resumeDownload(*it,false,err);
+        LOG_DEBUG(" resumeDownload status - return value is [%d] , error string is [%s]", rcTemp, (err.empty() ? "(no error)" : err.c_str()) );
         ++rc;
     }
 
-    return rc;
+    LOG_DEBUG ("Function resumeAll() finished: rc(%d)", rc);
+    return;
 }
 
-int DownloadManager::resumeAllForInterface(Connection interface, bool autoResume)
+void DownloadManager::resumeAllForInterface(Connection interface, bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
     std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
     std::string err;
     int rc=0;
 
-    if (!m_pDlDb)
-        return 0;
+    if (!m_pDlDb) {
+        LOG_DEBUG ("Function resumeAllForInterface() failed: No m_pDlDb");
+        return;
+    }
 
     std::string ifaceName = DownloadManager::connectionId2Name(interface);
 	LOG_DEBUG("Resume Download Interfaces : Interfaces - %s", ifaceName.c_str());
-    m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted",ifaceName,interrupteds);
+    if (m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted",ifaceName,interrupteds) == 0) {
+        LOG_DEBUG ("Function getDownloadHistoryRecordsForStateAndInterface() failed");
+    }
     for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin();it != interrupteds.end();++it)
     {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
-        resumeDownload(*it,autoResume,err);
+        int rcTemp = resumeDownload(*it,autoResume,err);
+        LOG_DEBUG(" resumeDownload status - return value is [%d] , error string is [%s]", rcTemp, (err.empty() ? "(no error)" : err.c_str()) );
         ++rc;
     }
 
-    return rc;
+    LOG_DEBUG ("Function resumeAllForInterface() finished: rc(%d)", rc);
+    return;
 }
 
 int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistoryDb::DownloadHistory& history,Connection newInterface,bool autoResume)
@@ -1072,26 +1115,34 @@ int DownloadManager::resumeDownloadOnAlternateInterface(DownloadHistoryDb::Downl
     return resumeDownload(history,autoResume,err);
 }
 
-int DownloadManager::resumeMultipleOnAlternateInterface(Connection oldInterface,Connection newInterface,bool autoResume)
+void DownloadManager::resumeMultipleOnAlternateInterface(Connection oldInterface,Connection newInterface,bool autoResume)
 {
     //go through all interrupted downloads from the db and resume each
     std::vector<DownloadHistoryDb::DownloadHistory> interrupteds;
     std::string err;
     int rc=0;
 
-    if (!m_pDlDb)
-        return 0;
+    if (!m_pDlDb) {
+        LOG_DEBUG ("Function resumeMultipleOnAlternateInterface() failed: No m_pDlDb");
+        return;
+    }
 
     std::string ifaceName = DownloadManager::connectionId2Name(oldInterface);
-    m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted",ifaceName,interrupteds);
+    if (m_pDlDb->getDownloadHistoryRecordsForStateAndInterface("interrupted",ifaceName,interrupteds) == 0) {
+        LOG_DEBUG ("Function getDownloadHistoryRecordsForStateAndInterface() failed");
+    }
     for (std::vector<DownloadHistoryDb::DownloadHistory>::iterator it = interrupteds.begin();it != interrupteds.end();++it)
     {
         //TODO: handle error for each resume and optionally report to subscription of download ticket
-        resumeDownloadOnAlternateInterface(*it,newInterface,autoResume);
+        int ret = resumeDownloadOnAlternateInterface(*it,newInterface,autoResume);
+        if (ret != 1) {
+            LOG_DEBUG ("Wrong resumeStatus after resumeDownloadOnAlternateInterface(): %d", ret);
+        }
         ++rc;
     }
 
-    return rc;
+    LOG_DEBUG ("Function resumeMultipleOnAlternateInterface() finished: rc(%d)", rc);
+    return;
 }
 
 /*
@@ -1108,7 +1159,9 @@ int DownloadManager::pauseDownload(const unsigned long ticket,bool allowQueuedTo
 
     if (!iter->second->canHandlePause) {
         LOG_WARNING_PAIRS (LOGID_NOTABLE_TO_PAUSE, 1, PMLOGKFV("ticket", "%lu", ticket), "cannot handle this pause request, it will be canceled");
-        cancel (ticket);
+        if (!cancel(ticket)) {
+            LOG_DEBUG ("Function cancel() failed: id(%lu)", ticket);
+        }
         return DOWNLOADMANAGER_PAUSESTATUS_NOSUCHDOWNLOADTASK;
     }
 
@@ -1139,7 +1192,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket,bool allowQueuedTo
 
     payload = JUtil::toSimpleString(payloadJsonObj);
 
-    if (!(DownloadSettings::Settings()->appCompatibilityMode)) {
+    if (!(DownloadSettings::instance().appCompatibilityMode)) {
         if (!postDownloadUpdate(task->ownerId, ticket,payload)) {
             LOG_WARNING_PAIRS (LOGID_SUBSCRIPTIONREPLY_FAIL_ON_PAUSE, 1, PMLOGKFV("ticket", "%lu", ticket), "failed to update pause status to subscribers");
         }
@@ -1148,11 +1201,13 @@ int DownloadManager::pauseDownload(const unsigned long ticket,bool allowQueuedTo
     std::string historyString = JUtil::toSimpleString(payloadJsonObj);
     //add to database record
     m_pDlDb->addHistory(task->ticket,task->ownerId,task->connectionName,"interrupted",historyString);
-    removeTask_dl(task->ticket);
+    if (!removeTask_dl(task->ticket)) {
+        LOG_DEBUG ("Function removeTask_dl() failed");
+    }
     delete _task;
 
     // if an active task has been paused, the next download should start
-    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) && allowQueuedToStart) {
+    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::instance().maxDownloadManagerConcurrent) && allowQueuedToStart) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long,DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
@@ -1161,7 +1216,9 @@ int DownloadManager::pauseDownload(const unsigned long ticket,bool allowQueuedTo
             nextDownload->queued = false;
             m_activeTaskCount++;
             requestWakeLock(true);
-            glibcurl_add(nextDownload->curlDesc.getHandle());
+            if (glibcurl_add(nextDownload->curlDesc.getHandle()) != 0) {
+                LOG_DEBUG ("Function glibcurl_add() failed");
+            }
             //LOG_DEBUG ("%s: starting download of ticket [%lu] for url [%s] deviceId %s authToken %s\n", __PRETTY_FUNCTION__,
                 //nextDownload->ticket, nextDownload->url.c_str(), nextDownload->authToken.c_str(), nextDownload->deviceId.c_str());
             m_pDlDb->addHistory(nextDownload->ticket,nextDownload->ownerId,task->connectionName,"running",nextDownload->toJSONString());
@@ -1170,7 +1227,7 @@ int DownloadManager::pauseDownload(const unsigned long ticket,bool allowQueuedTo
     return DOWNLOADMANAGER_PAUSESTATUS_OK;
 }
 
-int DownloadManager::pauseAll()
+void DownloadManager::pauseAll()
 {
     //run through the whole ticket map and call pause download on all...flag pause() so that it doesn't start queued downloads
     //Can't do this directly because the pause() fn modifies the map I'm iterating on. Do it via intermediate list
@@ -1178,12 +1235,14 @@ int DownloadManager::pauseAll()
     for (std::map<long,DownloadTask*>::iterator it = m_ticketMap.begin();it != m_ticketMap.end();++it)
         tickets.push_back(it->first);
     for (std::list<long>::iterator it = tickets.begin();it != tickets.end();++it)
-        pauseDownload(*it,false);
+        if (pauseDownload(*it,false) != 1) {
+            LOG_DEBUG ("Function pauseDownload() failed");
+        }
 
-    return 1;
+    return;
 }
 
-int DownloadManager::pauseAllForInterface(Connection interface)
+void DownloadManager::pauseAllForInterface(Connection interface)
 {
     //run through the whole ticket map and call pause download on all that match the connection specified...flag pause() so that it doesn't start queued downloads
     //Can't do this directly because the pause() fn modifies the map I'm iterating on. Do it via intermediate list
@@ -1195,9 +1254,11 @@ int DownloadManager::pauseAllForInterface(Connection interface)
     for (std::list<long>::iterator it = tickets.begin();it != tickets.end();++it)
     {
         LOG_DEBUG( "Pausing download for TICKET - %ld",*it );
-        pauseDownload(*it,false);
+        if (pauseDownload(*it,false) != 1) {
+            LOG_DEBUG ("Function pauseDownload() failed");
+        }
     }
-    return 1;
+    return;
 }
 
 int DownloadManager::swapToInterface(const unsigned long int ticket,const Connection newInterface)
@@ -1222,7 +1283,9 @@ int DownloadManager::swapToInterface(const unsigned long int ticket,const Connec
     if (pDltask->queued == false)
     {
         //remove the curl descriptor from glib_curl temporarily         TODO: check for error
-        glibcurl_remove(pDltask->curlDesc.getHandle());
+        if (glibcurl_remove(pDltask->curlDesc.getHandle()) != 0) {
+            LOG_DEBUG ("Function glibcurl_remove() failed");
+        }
     }
     //change its interface option
 
@@ -1255,7 +1318,9 @@ int DownloadManager::swapToInterface(const unsigned long int ticket,const Connec
     if (pDltask->queued == false)
     {
         //re-add the handle
-        glibcurl_add(pDltask->curlDesc.getHandle());
+        if (glibcurl_add(pDltask->curlDesc.getHandle()) != 0) {
+            LOG_DEBUG ("Function glibcurl_add() failed");
+        }
         //change its history record to reflect the new interface
         m_pDlDb->addHistory(pDltask->ticket,pDltask->ownerId,pDltask->connectionName,"running",pDltask->toJSONString());
     }
@@ -1306,8 +1371,8 @@ size_t DownloadManager::cbHeader(CURL * taskHandle,size_t headerSize,const char 
 
     ////LOG_DEBUG ("cbHeader(): %s\n",header.c_str());
     //find the :
-    size_t labelendpos;
-    if ((labelendpos = header.find(":",0)) == std::string::npos) {
+    size_t labelendpos = header.find(":",0);
+    if (labelendpos == std::string::npos) {
         //LOG_DEBUG ("%s: header string = %s (Function-Exit-Early)",__FUNCTION__,header.c_str());
         return headerSize;
     }
@@ -1437,7 +1502,9 @@ size_t DownloadManager::cbGlib()
                 //complete this transfer..remove the task...
                 dl_task = _task->p_downloadTask;
                 if (dl_task != NULL) {
-                    dl_task->curlDesc.setResultCode(resultCode);
+                    if (dl_task->curlDesc.setResultCode(resultCode) != 0) {
+                        LOG_DEBUG ("Function setResultCode() failed");
+                    }
                     dl_task->curlDesc.setHttpResultCode(l_httpCode);
                     dl_task->curlDesc.setHttpConnectCode(l_httpConnectCode);
                 }
@@ -1535,7 +1602,9 @@ size_t DownloadManager::cbWriteEvent (CURL * taskHandle,size_t payloadSize,unsig
             +e_bytesTotalStr + std::string("\"")
             +std::string(" }");
 
-        fdatasync(fileno(task->fp));
+        if (fdatasync(fileno(task->fp)) != 0) {
+            LOG_DEBUG ("Function fdatasync() failed");
+        }
         if (!postDownloadUpdate (task->ownerId, task->ticket, response)) {
             LOG_WARNING_PAIRS (LOGID_SUBSCRIPTIONREPLY_FAIL_ON_WRITEDATA, 2, PMLOGKS("ticket", key.c_str()),
                                                                             PMLOGKS("detail", response.c_str()),
@@ -1692,7 +1761,9 @@ void DownloadManager::completed_dl(DownloadTask* task)
     bool interrupted=false;
     //close the file being written to
     if (task->fp) {
-        fclose(task->fp);
+        if (fclose(task->fp) != 0) {
+            LOG_DEBUG ("function fclose() failed");
+        }
         task->fp = NULL;
         //LOG_DEBUG ("DownloadManager::completed(): closed output file");
     }
@@ -1717,7 +1788,9 @@ void DownloadManager::completed_dl(DownloadTask* task)
             if (task->getRemainingRedCounts() == 0)
             {
                 LOG_DEBUG ("It has been completed to try maximum of redirections 5.");
-                cancel(task->ticket);
+                if (!cancel(task->ticket)) {
+                    LOG_DEBUG ("Function cancel() failed: id(%lu)", task->ticket);
+                }
                 return;
             }
 
@@ -1738,7 +1811,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
 
                 //LOG_DEBUG ("task: location [%s], destPath [%s], destFile [%s], ticket [%lu]\n",
                 //      task->httpHeader_Location.c_str(),task->destPath.c_str(),task->destFile.c_str(), task->ticket);
-                download (task->ownerId,
+                ret = download (task->ownerId,
                         task->httpHeader_Location,
                         task->detectedMIMEType,
                         task->destPath,
@@ -1754,6 +1827,9 @@ void DownloadManager::completed_dl(DownloadTask* task)
                         task->cookieHeader,
                         task->rangeSpecified,
                         task->getRemainingRedCounts());
+                if (ret < 0) {
+                    LOG_DEBUG ("Function download() is failed (%d)", ret);
+                }
                 LOG_DEBUG ("[REDIRECT] ticket [%s] is now [%lu]",(task->httpHeader_Location).c_str(),(task->ticket));
                 return;
             }
@@ -1816,7 +1892,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
     if (transferError) {            //TODO: key on whether resultCode was a connection-establish related error, rather than bytesTotal=0. This works for now because bytesTotal
                                     // is only populated if the server was successfully contacted at least long enough to get headers
         //this is a true error.
-        unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
+        Utils::remove_file(task->destPath + task->downloadPrefix + task->destFile);
         payloadJsonObj.put("errorCode", (int)task->curlDesc.getResultCode());
         payloadJsonObj.put("errorText", curl_easy_strerror(task->curlDesc.getResultCode()));
         }
@@ -1829,7 +1905,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
 
         if (0 != retVal) {
             LOG_DEBUG ("renaming failed, setting file system error (%d)", DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR);
-            unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
+            Utils::remove_file(task->destPath + task->downloadPrefix + task->destFile);
             transferError = true;
             resultCode = DOWNLOADMANAGER_COMPLETIONSTATUS_FILESYSTEMERROR;
         }
@@ -1837,8 +1913,12 @@ void DownloadManager::completed_dl(DownloadTask* task)
         // file sync after rename()
         FILE *fp = fopen(std::string(task->destPath + task->destFile).c_str(), "r+b");
         if (fp) {
-            fdatasync(fileno(fp));
-            fclose(fp);
+            if (fdatasync(fileno(fp)) != 0) {
+                LOG_DEBUG ("Function fdatasync() failed");
+            }
+            if (fclose(fp) != 0) {
+                LOG_DEBUG ("Function fclose() failed");
+            }
             fp = NULL;
         }
     }
@@ -1904,7 +1984,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
 
 
 
-    if (!m_queue.empty() && m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent) {
+    if (!m_queue.empty() && m_activeTaskCount < DownloadSettings::instance().maxDownloadManagerConcurrent) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long,DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
@@ -1913,14 +1993,18 @@ void DownloadManager::completed_dl(DownloadTask* task)
             nextDownload->queued = false;
             m_activeTaskCount++;
             requestWakeLock(true);
-            glibcurl_add(nextDownload->curlDesc.getHandle());
+            if (glibcurl_add(nextDownload->curlDesc.getHandle()) != 0) {
+                LOG_DEBUG ("Function glibcurl_add() failed");
+            }
             //LOG_DEBUG ("%s: un-Q-ing a task, starting download of ticket [%lu] for url [%s]\n", __PRETTY_FUNCTION__,
             //      nextDownload->ticket, nextDownload->url.c_str());
             m_pDlDb->addHistory(nextDownload->ticket,nextDownload->ownerId,task->connectionName,"running",nextDownload->toJSONString());
         }
     }
     else if (m_queue.empty() && m_activeTaskCount == 0) {
-        g_idle_add (DownloadManager::cbIdleSourceGlibcurlCleanup, this);
+        if (g_idle_add (DownloadManager::cbIdleSourceGlibcurlCleanup, this) < 0) {
+            LOG_DEBUG ("Function g_idle_add() failed");
+        }
     }
 }
 
@@ -2004,7 +2088,7 @@ bool DownloadManager::cancel( unsigned long ticket )
 
     // remove file if the download has been cancelled.
     //LOG_DEBUG ("unlinking file %s", std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
-    unlink(std::string(task->destPath + task->downloadPrefix + task->destFile).c_str());
+    Utils::remove_file(task->destPath + task->downloadPrefix + task->destFile);
 
     //add to database recordis1xConnection
     m_pDlDb->addHistory(task->ticket,task->ownerId,task->connectionName,"cancelled",historyString);
@@ -2013,7 +2097,7 @@ bool DownloadManager::cancel( unsigned long ticket )
     delete _task;
 
     // if an active task has been cancelled, the next download should start
-    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::Settings()->maxDownloadManagerConcurrent)) {
+    if (!m_queue.empty() && (m_activeTaskCount < DownloadSettings::instance().maxDownloadManagerConcurrent)) {
         unsigned long queuedTicket = m_queue.front();
         m_queue.pop_front();
         std::map<long,DownloadTask*>::iterator iter = m_ticketMap.find(queuedTicket);
@@ -2022,7 +2106,9 @@ bool DownloadManager::cancel( unsigned long ticket )
         nextDownload->queued = false;
         m_activeTaskCount++;
         requestWakeLock(true);
-        glibcurl_add(nextDownload->curlDesc.getHandle());
+        if (glibcurl_add(nextDownload->curlDesc.getHandle()) != 0) {
+            LOG_DEBUG ("Function glibcurl_add() failed");
+        }
         //LOG_DEBUG ("%s: starting download of ticket [%lu] for url [%s]\n", __PRETTY_FUNCTION__,
         //      nextDownload->ticket, nextDownload->url.c_str());
         }
@@ -2081,7 +2167,7 @@ void DownloadManager::cancelFromHistory(DownloadHistoryDb::DownloadHistory& hist
     // remove file if the download has been cancelled.
     if (!extractError) {
         //LOG_DEBUG ("%s: unlinking file %s",__PRETTY_FUNCTION__, std::string(destFinalPath + destTempPrefix + destFinalFile).c_str());
-        unlink(std::string(destFinalPath + destTempPrefix + destFinalFile).c_str());
+        Utils::remove_file(destFinalPath + destTempPrefix + destFinalFile);
     }
 
     //add to database record
@@ -2105,7 +2191,9 @@ void DownloadManager::cancelAll()
     }
 
     for (i=0;i<sz;i++) {
-        cancel(keyArray[i]);
+        if (!cancel(keyArray[i])) {
+            LOG_DEBUG ("Function cancel() failed: id:(%ld)", keyArray[i]);
+        }
     }
     delete[] keyArray;
 }
@@ -2166,7 +2254,9 @@ TransferTask * DownloadManager::removeTask_ul(uint32_t ticket)
     m_handleMap.erase(task->getCURLHandlePtr());
 
     //remove from glibcurl's pool
-    glibcurl_remove(task->getCURLHandlePtr());
+    if (glibcurl_remove(task->getCURLHandlePtr()) != 0) {
+        LOG_DEBUG ("Function glibcurl_remove() failed");
+    }
 
     return _task;
 }
@@ -2184,11 +2274,11 @@ bool DownloadManager::spaceCheckOnFs(const std::string& path,uint64_t thresholdK
         return false;
     }
 
-    if (DownloadSettings::Settings()->dbg_useStatfsFake)
+    if (DownloadSettings::instance().dbg_useStatfsFake)
     {
-        fs_stats.f_bfree = DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
+        fs_stats.f_bfree = DownloadSettings::instance().dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
         LOG_DEBUG ("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                        __FUNCTION__,DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes,fs_stats.f_bfree);
+                        __FUNCTION__,DownloadSettings::instance().dbg_statfsFakeFreeSizeBytes,fs_stats.f_bfree);
     }
 
     uint64_t kbfree = ( ((uint64_t)(fs_stats.f_bfree) * (uint64_t)(fs_stats.f_frsize)) >> 10);
@@ -2211,11 +2301,11 @@ bool DownloadManager::spaceOnFs(const std::string& path,uint64_t& spaceFreeKB,ui
         return false;
     }
 
-    if (DownloadSettings::Settings()->dbg_useStatfsFake)
+    if (DownloadSettings::instance().dbg_useStatfsFake)
     {
-        fs_stats.f_bfree = DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
+        fs_stats.f_bfree = DownloadSettings::instance().dbg_statfsFakeFreeSizeBytes / fs_stats.f_frsize;
         LOG_DEBUG ("%s: USING FAKE STATFS VALUES! (free bytes specified as: %llu, free blocks simulated to: %llu )",
-                __FUNCTION__,DownloadSettings::Settings()->dbg_statfsFakeFreeSizeBytes,fs_stats.f_bfree);
+                __FUNCTION__,DownloadSettings::instance().dbg_statfsFakeFreeSizeBytes,fs_stats.f_bfree);
     }
 
     spaceFreeKB = ( ((uint64_t)(fs_stats.f_bavail) * (uint64_t)(fs_stats.f_frsize)) >> 10);
@@ -2261,7 +2351,9 @@ TransferTask * DownloadManager::removeTask_dl(uint32_t ticket) {
 
     if (!task->queued) {
         //remove from glibcurl's inprogress handle pool
-        glibcurl_remove(task->curlDesc.getHandle());
+        if (!glibcurl_remove(task->curlDesc.getHandle()) == 0) {
+            LOG_DEBUG ("Function glibcurl_remove() failed");
+        }
         // only decrement the active task count if this was in fact downloading
         m_activeTaskCount--;
     }
@@ -2279,7 +2371,9 @@ TransferTask * DownloadManager::removeTask_dl(uint32_t ticket) {
     curl_easy_cleanup(task->curlDesc.getHandle());
 
     //now that it is no longer valid, mark it null
-    task->curlDesc.setHandle(NULL);
+    if (!task->curlDesc.setHandle(NULL)) {
+        LOG_DEBUG ("Function setHandle() failed");
+    }
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
     return _task;
@@ -2298,10 +2392,15 @@ TransferTask * DownloadManager::removeTask(CURL * handle) {
     }
 
     //this is a bit wasteful but prevents from having to maintain 2 copies of essentially identical code
-    if (task->type == TransferTask::DOWNLOAD_TASK)
-        removeTask_dl(task->p_downloadTask->ticket);
-    else if (task->type == TransferTask::UPLOAD_TASK)
-        removeTask_ul(task->p_uploadTask->id());
+    if (task->type == TransferTask::DOWNLOAD_TASK) {
+        if (!removeTask_dl(task->p_downloadTask->ticket)) {
+            LOG_DEBUG ("Function removeTask_dl() failed");
+        }
+    } else if (task->type == TransferTask::UPLOAD_TASK) {
+        if (!removeTask_ul(task->p_uploadTask->id())) {
+            LOG_DEBUG ("Function removeTask_ul() failed");
+        }
+    }
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
     return task;
@@ -2528,9 +2627,13 @@ void DownloadManager::startupGlibCurl()
     glibcurl_set_callback(&cbGlibcurl,this);
 
     s_curlShareHandle = curl_share_init();
-    curl_share_setopt(s_curlShareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+    if (curl_share_setopt(s_curlShareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS) != 0) {
+        LOG_DEBUG ("Function curl_share_setopt() failed");
+    }
 #ifdef CURL_COOKIE_SHARING
-    curl_share_setopt(s_curlShareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+    if (curl_share_setopt(s_curlShareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE) != 0) {
+        LOG_DEBUG ("Function curl_share_setopt() failed");
+    }
 #endif
 
     CURLMcode retVal;
@@ -2547,10 +2650,12 @@ void DownloadManager::startupGlibCurl()
 //  }
 }
 
-bool DownloadManager::shutdownGlibCurl()
+void DownloadManager::shutdownGlibCurl()
 {
-    if (!m_glibCurlInitialized)
-        return false;
+    if (!m_glibCurlInitialized) {
+        LOG_DEBUG ("GlibCurl is not initialized");
+        return;
+    }
 
     //LOG_DEBUG ("DownloadManager::shutdownGlibCurl: %d\n", m_activeTaskCount);
 
@@ -2560,7 +2665,7 @@ bool DownloadManager::shutdownGlibCurl()
     m_glibCurlInitialized = false;
     glibcurl_cleanup();
 
-    return false;
+    return;
 }
 
 uint32_t DownloadManager::uploadPOSTFile(const std::string& file,
@@ -2599,7 +2704,9 @@ uint32_t DownloadManager::uploadPOSTFile(const std::string& file,
     //start the transfer
     LOG_DEBUG("Starting upload - uploading file [%s] to target url [%s]",p_ult->source().c_str(), p_ult->url().c_str() );
 
-    glibcurl_add(p_ult->getCURLHandlePtr());
+    if (glibcurl_add(p_ult->getCURLHandlePtr()) != 0) {
+        LOG_DEBUG ("Function glibcurl_add() failed");
+    }
 
     return p_ult->id();
 }
@@ -2630,7 +2737,9 @@ uint32_t DownloadManager::uploadPOSTBuffer(const std::string& buffer,
         //LOG_DEBUG ("%s: starting upload of file [%s] to url [%s]\n", __PRETTY_FUNCTION__,
          //       p_ult->source().c_str(), p_ult->url().c_str());
 
-    glibcurl_add(p_ult->getCURLHandlePtr());
+    if (glibcurl_add(p_ult->getCURLHandlePtr()) != 0) {
+        LOG_DEBUG ("Function glibcurl_add() failed");
+    }
 
     return p_ult->id();
 }
@@ -2659,7 +2768,9 @@ void DownloadManager::postUploadStatus (uint32_t id,const std::string& sourceFil
 
     std::string submsg = JUtil::toSimpleString(responseRoot);
     std::string subkey = std::string("UPLOAD_")+ConvertToString<uint32_t>(id);
-    postSubscriptionUpdate(subkey,submsg,m_serviceHandle);
+    if (postSubscriptionUpdate(subkey,submsg,m_serviceHandle) != 0) {
+        LOG_DEBUG ("Function postSubscriptionUpdate() failed");
+    }
 }
 
 
@@ -2926,7 +3037,7 @@ bool DownloadManager::diskSpaceAtStopMarkLevel()
     if (!DownloadManager::spaceOnFs("/media/internal", freeSpaceKB, totalSpaceKB))
         return true;
 
-    if (freeSpaceKB <= DownloadSettings::Settings()->freespaceStopmarkRemainingKBytes)
+    if (freeSpaceKB <= DownloadSettings::instance().freespaceStopmarkRemainingKBytes)
         return true;
 
     return false;

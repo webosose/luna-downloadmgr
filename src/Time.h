@@ -38,7 +38,7 @@ public:
     static inline uint32_t curTimeMs()
     {
         struct timespec curTime;
-        ::clock_gettime(CLOCK_MONOTONIC, &curTime);
+        (void)::clock_gettime(CLOCK_MONOTONIC, &curTime);
         return convertToMs(&curTime);
     }
 
@@ -60,7 +60,7 @@ public:
 
     static inline uint32_t curSysTimeMs() {
         struct timeval currTime;
-        ::gettimeofday(&currTime, NULL);
+        (void)::gettimeofday(&currTime, NULL);
         return convertToMs(&currTime);
     }
 };

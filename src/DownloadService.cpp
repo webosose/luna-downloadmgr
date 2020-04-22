@@ -625,7 +625,9 @@ bool DownloadManager::cbCancelDownload(LSHandle* lshandle, LSMessage *msg, void 
 
     success = true;
     //kill this task
-    DownloadManager::instance().cancel(ticket_id);
+    if (!DownloadManager::instance().cancel(ticket_id)) {
+        LOG_DEBUG ("Function cancel() failed: id:(%lu)", ticket_id);
+    }
 
     Done:
 
@@ -935,7 +937,7 @@ bool DownloadManager::cbDeleteDownloadedFile(LSHandle* lshandle, LSMessage *msg,
             }
             success=true;
             targetStr = resultRoot["target"].asString();
-            deleteFile(targetStr.c_str());      //if the file is not found, no big deal; consider it deleted!
+            Utils::remove_file(targetStr);      //if the file is not found, no big deal; consider it deleted!
             result = result = std::string("{\"ticket\":")+key+std::string(" , \"returnValue\":true }");
     }
     else {
@@ -1042,14 +1044,14 @@ void DownloadManager::filesystemStatusCheck(const uint64_t& freeSpaceKB,const ui
     pctFull = (pctFull <= 100 ? pctFull : 100);
     LOG_DEBUG ("%s: Percent Full = %u (from free space KB = %llu , total space KB = %llu",__FUNCTION__,pctFull,freeSpaceKB,totalSpaceKB);
 
-    if (pctFull < DownloadSettings::Settings()->freespaceLowmarkFullPercent)
+    if (pctFull < DownloadSettings::instance().freespaceLowmarkFullPercent)
         return;
 
     bool critical = false;
     bool stopMark = false;
-    if (freeSpaceKB <= DownloadSettings::Settings()->freespaceStopmarkRemainingKBytes)
+    if (freeSpaceKB <= DownloadSettings::instance().freespaceStopmarkRemainingKBytes)
         stopMark = true;
-    else if (pctFull >= DownloadSettings::Settings()->freespaceCriticalmarkFullPercent)
+    else if (pctFull >= DownloadSettings::instance().freespaceCriticalmarkFullPercent)
         critical = true;
 
     if (criticalAlertRaised)
@@ -1491,7 +1493,7 @@ bool DownloadManager::cbConnectionManagerServiceState (LSHandle* lshandle, LSMes
         if (root["connected"].asBool())
         {
             //DEBUG: is the force novacom switch on? if yes, tell cnmgr to do it!
-            if (DownloadSettings::Settings()->dbg_forceNovacomOnAtStartup)
+            if (DownloadSettings::instance().dbg_forceNovacomOnAtStartup)
             {
                 turnNovacomOn(DownloadManager::instance().m_serviceHandle);
             }
@@ -1728,8 +1730,8 @@ bool DownloadManager::cbConnectionManagerConnectionStatus(LSHandle* lshandle, LS
 
     //act on changes...
 
-    bool autoResume = DownloadSettings::Settings()->autoResume;
-    bool resumeAggression = DownloadSettings::Settings()->resumeAggression;
+    bool autoResume = DownloadSettings::instance().autoResume;
+    bool resumeAggression = DownloadSettings::instance().resumeAggression;
     bool previouslyAvailable = (wifiConnectionStatusPrevious == InetConnectionConnected) ||
                             (wanConnectionStatusPrevious == InetConnectionConnected) ||
                             (btpanConnectionStatusPrevious == InetConnectionConnected) ||
@@ -2002,7 +2004,6 @@ static bool cbAllow1x(LSHandle* lshandle, LSMessage *message,void *user_data)
     }
 
     return true;
-
 }
 
 static void turnNovacomOn(LSHandle * lshandle)
@@ -2017,17 +2018,18 @@ static void turnNovacomOn(LSHandle * lshandle)
         LSErrorFree(&lserror);
     }
 }
-bool DownloadManager::requestWakeLock(bool status)
+
+void DownloadManager::requestWakeLock(bool status)
 {
     LOG_DEBUG("requestWakeLock is called. status : %d , sleepDClientId : %s", status, (m_sleepDClientId.empty()? "NULL" : m_sleepDClientId.c_str()));
     if (m_sleepDClientId.empty()){
         LOG_DEBUG("requestWakeLock- sleepDClientId is empty. Do not call setWakeLock");
-        return false;
+        return;
     }
 
     if (status && (1 != m_activeTaskCount)) {
         LOG_DEBUG("requestWakeLock is not needed : status - %d, m_activeTaskCount - %d", status, m_activeTaskCount);
-        return false;
+        return;
     }
     LSError lsError;
     LSErrorInit(&lsError);
@@ -2039,9 +2041,7 @@ bool DownloadManager::requestWakeLock(bool status)
                NULL, NULL, &lsError))
     {
         LSErrorFree(&lsError);
-        return false;
     }
-    return true;
 }
 
 bool DownloadManager::cbRequestWakeLock(LSHandle* lshandle, LSMessage *msg, void *user_data)

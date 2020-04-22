@@ -44,8 +44,11 @@ DownloadTask::DownloadTask()
 
 DownloadTask::~DownloadTask()
 {
-        if (fp)
-            fclose(fp);
+        if (fp) {
+            if (fclose(fp) != 0) {
+                LOG_DEBUG ("Function fclose() failed");
+            }
+        }
 }
 
 void DownloadTask::setMimeType(const std::string& type)
