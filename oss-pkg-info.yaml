@@ -2,3 +2,6 @@ Open Source Software Package:
 - name: webOSOSE
   source: https://github.com/webosose
   license: Apache-2.0
+- name: glibcurl
+  source: http://atterer.org/glibcurl
+  license: ISC
