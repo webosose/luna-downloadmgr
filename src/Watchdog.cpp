@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2018 LG Electronics, Inc.
+// Copyright (c) 2015-2020 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ static gboolean exit_on_idle(gpointer ctx)
 gboolean watchdog_handler(gpointer ctx)
 {
     if (is_idle(ctx)) {
-        if (g_timeout_add_seconds(WATCHDOG_TIMEOUT, exit_on_idle, ctx) < 0) {
+        if (g_timeout_add_seconds(WATCHDOG_TIMEOUT, exit_on_idle, ctx) == 0) {
             LOG_DEBUG ("Function g_timeout_add_seconds() failed");
         }
     }

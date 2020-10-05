@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2020 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,9 +64,7 @@ size_t DownloadManager::cbCurlHeaderInfo(void * ptr,size_t size,size_t nmemb,voi
 }
 
 void DownloadManager::cbGlibcurl(void* data) {
-    if (DownloadManager::instance().cbGlib() < 0) {
-        LOG_DEBUG ("Function cbGlib() failed");
-    }
+    DownloadManager::instance().cbGlib();
 }
 
 int DownloadManager::cbCurlSetSocketOptions(void *clientp,curl_socket_t curlfd,curlsocktype purpose) {
@@ -1453,11 +1451,10 @@ size_t DownloadManager::cbHeader(CURL * taskHandle,size_t headerSize,const char 
     return headerSize;
 }
 
-size_t DownloadManager::cbGlib()
+void DownloadManager::cbGlib()
 {
     CURLMsg* msg;
     int inQueue;
-    int payloadSize = 0;
     TransferTask * _task = NULL;
     long l_httpCode = 0;
     long l_httpConnectCode;
@@ -1495,7 +1492,7 @@ size_t DownloadManager::cbGlib()
             _task = removeTask(msg->easy_handle);
 
             if (_task == NULL)
-                goto Return_cbGlib;
+                break;
 
             if (_task->type == TransferTask::DOWNLOAD_TASK) {
 
@@ -1524,10 +1521,8 @@ size_t DownloadManager::cbGlib()
             LOG_WARNING_PAIRS_ONLY (LOGID_UNKNOWN_MSG_CBGLIB, 1, PMLOGKFV("msg code", "%d", msg->msg));
         }
     }
-Return_cbGlib:
 
 //  LOG_DEBUG ("%s Function-Exit",__FUNCTION__);
-    return payloadSize;
 }
 
 size_t DownloadManager::cbWriteEvent (CURL * taskHandle,size_t payloadSize,unsigned char * payload)
@@ -2002,7 +1997,7 @@ void DownloadManager::completed_dl(DownloadTask* task)
         }
     }
     else if (m_queue.empty() && m_activeTaskCount == 0) {
-        if (g_idle_add (DownloadManager::cbIdleSourceGlibcurlCleanup, this) < 0) {
+        if (g_idle_add (DownloadManager::cbIdleSourceGlibcurlCleanup, this) == 0) {
             LOG_DEBUG ("Function g_idle_add() failed");
         }
     }

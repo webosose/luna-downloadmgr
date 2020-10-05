@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2020 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -270,11 +270,11 @@ private:
     void completed_dl(DownloadTask*);
     void completed_ul(UploadTask*);
 
-    size_t  cbGlib ();
-    size_t  cbReadEvent (CURL* taskHandle,size_t payloadSize=0,unsigned char * payload=NULL);
-    size_t  cbWriteEvent (CURL* taskHandle,size_t payloadSize=0,unsigned char * payload=NULL);
+    void cbGlib ();
+    size_t cbReadEvent (CURL* taskHandle, size_t payloadSize=0, unsigned char * payload=NULL);
+    size_t cbWriteEvent (CURL* taskHandle, size_t payloadSize=0, unsigned char * payload=NULL);
 
-    size_t  cbHeader(CURL* taskHandle,size_t headerSize,const char * headerText);
+    size_t cbHeader(CURL* taskHandle, size_t headerSize, const char * headerText);
     int cbSetSocketOptions(void *clientp,curl_socket_t curlfd,curlsocktype purpose);
 
     static size_t cbCurlReadFromFile(void* ptr, size_t size, size_t nmemb, void *stream);
