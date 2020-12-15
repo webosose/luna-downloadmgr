@@ -1,16 +1,18 @@
 {
-    "networking.internal": [
-        "com.webos.service.downloadmanager/allow1x",
+    "download.operation": [
+        "com.webos.service.downloadmanager/getAllHistory",
         "com.webos.service.downloadmanager/cancelAllDownloads",
+        "com.webos.service.downloadmanager/clearHistory"
+    ],
+    "download.management": [
+        "com.webos.service.downloadmanager/is1xMode",
+        "com.webos.service.downloadmanager/listPending",
+        "com.webos.service.downloadmanager/allow1x",
         "com.webos.service.downloadmanager/cancelDownload",
         "com.webos.service.downloadmanager/cancelUpload",
-        "com.webos.service.downloadmanager/clearHistory",
         "com.webos.service.downloadmanager/deleteDownloadedFile",
         "com.webos.service.downloadmanager/download",
         "com.webos.service.downloadmanager/downloadStatusQuery",
-        "com.webos.service.downloadmanager/getAllHistory",
-        "com.webos.service.downloadmanager/is1xMode",
-        "com.webos.service.downloadmanager/listPending",
         "com.webos.service.downloadmanager/pauseDownload",
         "com.webos.service.downloadmanager/resumeDownload",
         "com.webos.service.downloadmanager/upload"
