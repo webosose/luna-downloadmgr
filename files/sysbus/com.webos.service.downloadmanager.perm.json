@@ -1,6 +1,17 @@
 {
     "com.webos.service.downloadmanager": [
-        "networking.internal",
+        "networkconnection.query",
+        "networkconnection.management",
+        "wan.query",
+        "wan.management",
+        "wifi.query",
+        "wifi.management",
+        "wifi.devutility",
+        "download.operation",
+        "download.management",
+        "power.operation",
+        "power.management",
+        "filecache.management",
         "system"
     ]
 }
