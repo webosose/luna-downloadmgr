@@ -475,8 +475,9 @@ int DownloadManager::download (const std::string& caller,
             task->destPath = task->destPath + std::string("/");
 
         std::string templateStr = task->destPath + std::string("fileXXXXXX");
-        char * templateFileName = new char[templateStr.length()+2];
-        strncpy(templateFileName,templateStr.c_str(),sizeof(templateStr.length()+2));
+        auto templateStrLength = templateStr.length() + 1u;
+        char * templateFileName = new char[templateStrLength];
+        strncpy(templateFileName,templateStr.c_str(),templateStrLength);
         mode_t mask = umask(S_IRWXG | S_IRWXO);
         int fd = mkstemp(templateFileName);
         (void) umask(mask);
