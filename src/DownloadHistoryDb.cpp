@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -526,6 +526,7 @@ bool DownloadHistoryDb::openDownloadHistoryDb(std::string& errmsg)
     }
 
     gchar* dlDirPath = g_path_get_dirname(s_dlDbPath);
+    if(dlDirPath !=NULL)
     if (g_mkdir_with_parents(dlDirPath, 0755) == -1) {
         LOG_DEBUG ("Function g_mkdir_with_parents() failed");
     }

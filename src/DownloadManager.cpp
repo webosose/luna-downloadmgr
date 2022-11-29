@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2020 LG Electronics, Inc.
+// Copyright (c) 2012-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -506,6 +506,12 @@ int DownloadManager::download (const std::string& caller,
     //allocate a curl handle for this download, and set its parameters
     CURL * curlHandle;
     curlHandle = curl_easy_init();
+    
+    if(curlHandle==NULL){
+        LOG_DEBUG ("curlHandle is an nullptr");
+        delete p_ttask;
+        return DOWNLOADMANAGER_STARTSTATUS_GENERALERROR;
+    }
 
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SHARE, s_curlShareHandle)) != CURLE_OK)
         LOG_DEBUG ("curl set opt: CURLOPT_SHARE failed [%d]\n",curlSetOptRc);
@@ -932,6 +938,12 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     curlHandle = curl_easy_init();
     int curlSetOptRc;
 
+    if(curlHandle==NULL){
+        LOG_DEBUG ("curlHandle is an nullptr");
+        delete p_ttask;
+        return DOWNLOADMANAGER_STARTSTATUS_GENERALERROR;
+    }
+
     if ((curlSetOptRc = curl_easy_setopt(curlHandle, CURLOPT_SHARE, s_curlShareHandle)) != CURLE_OK)
         LOG_DEBUG ("curl set opt: CURLOPT_SHARE failed [%d]\n",curlSetOptRc);
 
@@ -1022,7 +1034,7 @@ int DownloadManager::resumeDownload(const DownloadHistoryDb::DownloadHistory& hi
     if (!p_dlTask->curlDesc.setHandle(curlHandle)) {
         LOG_DEBUG ("Function setHandle() failed");
     }
-
+    
     //map the curl handle to the download task here, so that we can find the task in the callback
     m_handleMap[p_dlTask->curlDesc]=p_ttask;
     //..and also map ticket to the download task, so that it can be found by luna requests querying the download status of a ticket
