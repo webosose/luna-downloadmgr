@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2024 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ int main( int argc, char** argv)
     // Initialize the Download Manager
     DownloadManager::instance().init();
 
-#ifdef WEBOS_TARGET_DISTRO_VARIANT_LITE
+#ifdef DYNAMIC_SERVICE
     // Quits GMainLoop if there are no activity over time interval
     if (g_timeout_add_seconds(WATCHDOG_TIMEOUT, watchdog_handler, static_cast<gpointer>(&DownloadManager::instance())) < 0) {
         LOG_DEBUG ("Function g_timeout_add_seconds() failed");

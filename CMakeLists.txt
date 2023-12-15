@@ -1,4 +1,4 @@
-# Copyright (c) 2012-2020 LG Electronics, Inc.
+# Copyright (c) 2012-2024 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,10 +114,9 @@ install(TARGETS ${CMAKE_PROJECT_NAME}
         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                     GROUP_READ GROUP_EXECUTE)
 
-webos_distro_variant_dep()
-
-if(WEBOS_TARGET_DISTRO_VARIANT STREQUAL "lite")
+if(DEFINED DYNAMIC_SERVICE)
     set (${CMAKE_PROJECT_NAME}_SERVICE_TYPE "dynamic")
+    add_definitions(-DDYNAMIC_SERVICE)
 else()
     set (${CMAKE_PROJECT_NAME}_SERVICE_TYPE "static")
     set (${CMAKE_PROJECT_NAME}_ADD_START_COMMAND "start on rest-boot-done")
