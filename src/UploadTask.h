@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2025 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ private:
 
     UploadTask();
     //propagate into the object and store, postparts and contenttype, as they may be useful in case of redirects, or other transient problems
-    UploadTask(const std::string& url,const std::string file,const std::string& data,uint32_t id,
+    UploadTask(const std::string& url,const std::string& file,const std::string& data,uint32_t id,
             std::vector<PostItem> * postparts,const std::string& contenttype,CURL * p_curl);
     UploadTask& operator=(const UploadTask& c) { return *this;}
     UploadTask(const UploadTask& c);

@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2018 LG Electronics, Inc.
+// Copyright (c) 2012-2025 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1470,7 +1470,7 @@ bool DownloadManager::cbUpload (LSHandle* lshandle, LSMessage* msg, void* user_d
             if (jo.isNull())
                 continue;
             std::string s = JUtil::toSimpleString(jo);
-            httpHeaders.push_back(s);
+            httpHeaders.push_back(std::move(s));
         }
     }
 
